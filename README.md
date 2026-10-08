@@ -15,6 +15,12 @@
 [![React 19](https://img.shields.io/badge/React-19.3.0-61dafb?style=for-the-badge&logo=react)](https://react.dev)
 [![TypeScript](https://img.shields.io/badge/TypeScript-7.0-3178c6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org)
 
+<br /><br />
+
+<p align="center">
+  <img src="assets/scrn1.png" alt="Zion Habit Tracker Live Dashboard" width="95%" style="border-radius: 12px; box-shadow: 0 16px 40px rgba(0,0,0,0.6);" />
+</p>
+
 </div>
 
 ---
@@ -30,9 +36,56 @@ Most modern habit trackers trap your data behind monthly subscriptions, force cl
 
 ---
 
-## Core Features
+## 📸 Visual Walkthrough & Screenshots
 
-### 1. Concentric Activity Rings
+### 1. Interactive Dashboard & Concentric Activity Rings
+Monitor daily execution across multi-dimensional activity rings, 7-day consistency momentum, monthly target pace, and visual heat circles.
+
+<p align="center">
+  <img src="assets/scrn1.png" alt="Interactive Dashboard & Activity Rings" width="95%" style="border-radius: 10px;" />
+</p>
+
+---
+
+### 2. Master Habits Grid (Sheets-Precision)
+Switch between **7-Day Weekly Focus** and **Month Matrix**. Features pinned sticky columns, custom goal steppers, 1-click check-ins, drag-and-drop reordering, and zero-arrow internal scrolling.
+
+<p align="center">
+  <img src="assets/scrn2.png" alt="Daily Habits Grid Matrix" width="95%" style="border-radius: 10px;" />
+</p>
+
+---
+
+### 3. Deep Analytics & 365-Day Consistency Heatmap
+Inspect your full-year consistency heatmap, 14-day momentum trajectory sparklines, weekday performance distribution, and launch in-depth Weekly Reviews with letter grades (A+ to F).
+
+<p align="center">
+  <img src="assets/scrn3.png" alt="Deep Analytics & 365-Day Heatmap" width="95%" style="border-radius: 10px;" />
+</p>
+
+---
+
+### 4. Streaks & Achievement Medals Ledger
+Gamify your habit consistency with intelligent streak calculations and collectible milestone badges (7-Day Ignition, 30-Day Builder, 100-Day Master, 365-Day Legend, Perfect Week, and Perfect Month).
+
+<p align="center">
+  <img src="assets/scrn4.png" alt="Streaks & Achievement Medals" width="95%" style="border-radius: 10px;" />
+</p>
+
+---
+
+### 5. User Profile, Mastery Progression & Multi-Profile Security
+Track your overall Habit Consistency XP, inspect all-time best streaks, manage security settings, and seamlessly switch between multiple profiles on the same device.
+
+<p align="center">
+  <img src="assets/scrn5.png" alt="User Profile and Multi-Profile System" width="95%" style="border-radius: 10px;" />
+</p>
+
+---
+
+## Core Features Breakdown
+
+### 🎯 1. Concentric Activity Rings
 - Three dynamic SVG concentric progress rings rendered with real-time gradient precision:
   - **Outer Coral Ring (`#FA114F`)**: Today's Scheduled Execution (habits completed vs. scheduled today).
   - **Middle Lime Ring (`#A6FF00`)**: Weekly Momentum (7-day compound completion rate).
@@ -40,7 +93,7 @@ Most modern habit trackers trap your data behind monthly subscriptions, force cl
 - Interactive hover tooltips displaying exact percentages and progress metrics.
 - Fluid celebration animations and confetti bursts upon hitting 100% ring closure.
 
-### 2. Master Habits Grid (Sheets-Precision)
+### 📊 2. Master Habits Grid (Sheets-Precision)
 - **Dual View Engine**: Switch seamlessly between **7-Day Weekly Focus** and the **Full Month Matrix**.
 - **Sticky Column Architecture**: Habit names, targets, and streaks stay pinned on the left while days scroll horizontally.
 - **Clean Internal Scrolling**: Table rows scroll smoothly inside the habit card with pinned headers and footers, keeping the main window firmly anchored.
@@ -48,19 +101,19 @@ Most modern habit trackers trap your data behind monthly subscriptions, force cl
 - **Drag-and-Drop Reordering**: Intuitive handle grips to organize habits in your preferred order of execution.
 - **Optimistic UI Engine**: Sub-50ms instant checkbox updates with background database reconciliation.
 
-### 3. Daily Routine Sidecar
+### ⚡ 3. Daily Routine Sidecar
 - Always-accessible sidebar routine widget showcasing your active daily checklist.
 - Visual micro-progress bar and real-time counter (`X of Y done`) pinned directly in the application titlebar beside the Zion name.
 - One-click check-ins without leaving whichever tab or analytics view you are currently browsing.
 
-### 4. Deep Analytics & 365-Day Heatmap
-- **Annual Consistency Heatmap**: 52-week GitHub-style activity grid visualizing your daily habit intensity across all 365 days of the year.
+### 📈 4. Deep Analytics & 365-Day Heatmap
+- **Annual Consistency Heatmap**: 52-week activity grid visualizing your daily habit intensity across all 365 days of the year.
 - **14-Day Momentum Trajectory**: Custom SVG sparkline trend graphs tracking individual habit momentum over the last two weeks.
 - **Weekday Performance Distribution**: Granular breakdown of which days of the week you perform best (Monday through Sunday).
 - **Diagnostics & Rankings**: Automatic discovery of your top-performing habits alongside habits requiring immediate attention.
 - **Month-over-Month Comparison**: Percentage growth trajectory compared directly against the previous month.
 
-### 5. Streaks & Milestone Medals
+### 🔥 5. Streaks & Milestone Medals
 - **Intelligent Streak Engine**: Streaks calculate against your customizable daily threshold (default 50%), ensuring rest days don't unfairly penalize your momentum.
 - **Milestone Medals**: Unlockable achievement badges with progress percentages:
   - **7-Day Ignition**: Ignite your initial habit momentum.
@@ -70,17 +123,17 @@ Most modern habit trackers trap your data behind monthly subscriptions, force cl
   - **Perfect Week & Perfect Month**: 100% completion across all scheduled commitments.
 - **Audio Feedback**: Subtle, studio-quality completion chimes and milestone fanfare.
 
-### 6. Command Palette & Omnibar (`Ctrl + K`)
+### ⌘ 6. Command Palette & Omnibar (`Ctrl + K`)
 - High-velocity keyboard workflow inspired by modern IDEs.
 - Instant search across all habits, system actions, view toggling, and documentation.
 - Quick navigation shortcuts to hop between Dashboard, Habits Matrix, Analytics, Streaks, Profile, and Settings in milliseconds.
 
-### 7. Multi-Profile Support
+### 👥 7. Multi-Profile Support
 - Built-in profile manager allowing multiple users to track habits on the same machine.
 - Great for students sharing devices, or for separating **Work / Engineering Habits** from **Personal / Health Habits**.
 - Password protection support for individual profile privacy.
 
-### 8. Data Ownership, Backup & Export
+### 🛡️ 8. Data Ownership, Backup & Export
 - **One-Click JSON Backup**: Export your complete database to JSON anytime. Restore on any machine with zero friction.
 - **Spreadsheet CSV Export**: Export check-in history directly to CSV compatible with Google Sheets, Excel, or Python data science notebooks.
 - **Safe Reset & Archive**: Archive habits you're not currently practicing without destroying your historical data.
@@ -130,11 +183,17 @@ Zion is designed from the ground up for developer ergonomics. You can navigate, 
 
 ```text
 zion-habit-tracker/
+├── assets/                    # Application icons & preview screenshots
+│   ├── scrn1.png              # Interactive Dashboard preview
+│   ├── scrn2.png              # Master Habits Grid preview
+│   ├── scrn3.png              # Analytics & Heatmap preview
+│   ├── scrn4.png              # Streaks & Medals preview
+│   └── scrn5.png              # User Profile preview
 ├── electron/                  # Electron Main Process & Native Bridges
 │   ├── main.ts                # Main application window, lifecycle & IPC handlers
 │   └── preload.ts             # Context-isolated secure API bridge
 ├── src/                       # React 19 Frontend Application
-│   ├── assets/                # App icons, visual media & vector assets
+│   ├── assets/                # App icons, visual media & 96x96 logo
 │   ├── components/            # Reusable UI component modules
 │   │   ├── analytics/         # Heatmap, sparklines, weekday distribution
 │   │   ├── dashboard/         # Activity rings, top cards, progress summaries
