@@ -1,0 +1,438 @@
+@import "tailwindcss";
+
+:root {
+  /* Ultra-Deep Pure Dark Theme (Pure Neutral Obsidian Black, Zero Blue Tint) */
+  --bg-canvas: #09090b;           /* Pure deep canvas black */
+  --bg-surface: #0e0e11;          /* Sidebars & topbars */
+  --bg-surface-elevated: #131316;  /* Cards, modals, drawers */
+  --bg-surface-card: #17171a;      /* Inner sub-cards */
+  --bg-surface-subtle: #1c1c20;    /* Buttons, inputs, chips */
+  --bg-surface-hover: rgba(255, 255, 255, 0.04);
+  --bg-surface-active: rgba(255, 255, 255, 0.08);
+
+  --border-subtle: rgba(255, 255, 255, 0.065);
+  --border-medium: rgba(255, 255, 255, 0.11);
+  --border-strong: rgba(255, 255, 255, 0.18);
+
+  --text-primary: #f4f4f6;
+  --text-secondary: #9898a4;
+  --text-muted: #5e5e6c;
+  --text-dim: #3e3e48;
+
+  --accent-primary: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-glow: rgba(99, 102, 241, 0.22);
+  --accent-surface: rgba(255, 255, 255, 0.06);
+  --accent-border: rgba(255, 255, 255, 0.14);
+  --accent-text: #f4f4f6;
+
+  /* Primary Action Buttons (Solid White in Dark Theme, Solid Black in White Theme) */
+  --btn-primary-bg: #ffffff;
+  --btn-primary-text: #09090b;
+  --btn-primary-hover: #f4f4f5;
+  --btn-primary-shadow: 0 0 20px rgba(255, 255, 255, 0.22), 0 2px 6px rgba(0, 0, 0, 0.5);
+
+  --status-success: #10b981;
+  --status-warning: #f59e0b;
+  --status-danger: #f43f5e;
+
+  --ring-track: rgba(255, 255, 255, 0.065);
+
+  --shadow-dropdown: 0 20px 48px rgba(0, 0, 0, 0.85), 0 0 0 1px rgba(255, 255, 255, 0.065);
+  --shadow-card: 0 8px 24px rgba(0, 0, 0, 0.55);
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+  --radius-xl: 18px;
+  --radius-pill: 9999px;
+  --transition-fast: 0.14s cubic-bezier(0.4, 0, 0.2, 1);
+
+  --font-sans: 'Inter', system-ui, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-num: 'Nunito', system-ui, sans-serif;
+
+  /* Backward-compatible aliases */
+  --bg: var(--bg-canvas);
+  --card: var(--bg-surface-elevated);
+  --card-2: var(--bg-surface);
+  --sep: var(--border-subtle);
+  --text: var(--text-primary);
+  --muted: var(--text-muted);
+  --faint: var(--text-dim);
+}
+
+[data-theme='light'] {
+  /* Crisp Studio Light Theme (High Contrast Studio Minimalist Aesthetic) */
+  --bg-canvas: #f1f5f9;          /* Cool crisp canvas background */
+  --bg-surface: #ffffff;         /* Topbar, sidebar surfaces */
+  --bg-surface-elevated: #ffffff;/* Cards are crisp pure white on light canvas */
+  --bg-surface-card: #f8fafc;    /* Inset/inner cards */
+  --bg-surface-subtle: #e2e8f0;  /* Tactile buttons, chips, inputs */
+  --bg-surface-hover: rgba(0, 0, 0, 0.04);
+  --bg-surface-active: rgba(0, 0, 0, 0.07);
+
+  --border-subtle: #e2e8f0;      /* Crisp card hairline border */
+  --border-medium: #cbd5e1;      /* Clearly visible element border */
+  --border-strong: #94a3b8;      /* Strong focus borders */
+
+  --text-primary: #0f172a;        /* Ink slate (95% black, maximum legibility) */
+  --text-secondary: #334155;      /* High-contrast secondary text (slate-700) */
+  --text-muted: #64748b;          /* Legible muted text (slate-500, passes WCAG AA) */
+  --text-dim: #94a3b8;            /* Hints / future dates (slate-400) */
+
+  --accent-primary: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-glow: rgba(79, 70, 229, 0.16);
+  --accent-surface: rgba(79, 70, 229, 0.08);
+  --accent-border: rgba(79, 70, 229, 0.22);
+  --accent-text: #4f46e5;
+
+  /* Primary Action Buttons (Solid Black in White Theme) */
+  --btn-primary-bg: #09090b;
+  --btn-primary-text: #ffffff;
+  --btn-primary-hover: #18181b;
+  --btn-primary-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+
+  --status-success: #10b981;
+  --status-warning: #f59e0b;
+  --status-danger: #f43f5e;
+
+  --ring-track: #e2e8f0;         /* Clearly visible track circle in light mode */
+
+  --shadow-dropdown: 0 16px 36px rgba(0, 0, 0, 0.12), 0 0 0 1px rgba(0, 0, 0, 0.06);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.05), 0 4px 14px -2px rgba(0, 0, 0, 0.04);
+
+  --bg: var(--bg-canvas);
+  --card: var(--bg-surface-elevated);
+  --card-2: var(--bg-surface);
+  --sep: var(--border-subtle);
+  --text: var(--text-primary);
+  --muted: var(--text-secondary);
+  --faint: var(--text-muted);
+}
+
+* {
+  box-sizing: border-box;
+  border-color: var(--border-subtle);
+}
+
+body {
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  user-select: none;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color var(--transition-fast), color var(--transition-fast);
+}
+
+.font-num {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Electron titlebar drag regions */
+.titlebar-drag {
+  -webkit-app-region: drag;
+}
+
+.titlebar-nodrag {
+  -webkit-app-region: no-drag;
+}
+
+/* Zion Studio Theme-Integrated Scrollbars (Pure Custom WebKit, Zero Native Buttons) */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+::-webkit-scrollbar-button,
+::-webkit-scrollbar-button:single-button,
+::-webkit-scrollbar-button:vertical:decrement,
+::-webkit-scrollbar-button:vertical:increment,
+::-webkit-scrollbar-button:horizontal:decrement,
+::-webkit-scrollbar-button:horizontal:increment,
+::-webkit-scrollbar-button:start:decrement,
+::-webkit-scrollbar-button:end:increment {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  -webkit-appearance: none !important;
+}
+
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-track-piece {
+  background: transparent;
+  border-radius: 9999px;
+  margin: 0;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  border: none;
+  transition: background var(--transition-fast);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.4);
+}
+
+::-webkit-scrollbar-thumb:active {
+  background: var(--accent-primary);
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.25);
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb:hover {
+  background: rgba(15, 23, 42, 0.45);
+}
+
+[data-theme='light'] ::-webkit-scrollbar-thumb:active {
+  background: var(--accent-primary);
+}
+
+/* Explicit Custom Scrollbar Class for Cards & Modals */
+.custom-scrollbar::-webkit-scrollbar,
+.theme-scrollbar::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-button,
+.theme-scrollbar::-webkit-scrollbar-button,
+.custom-scrollbar::-webkit-scrollbar-button:single-button,
+.theme-scrollbar::-webkit-scrollbar-button:single-button,
+.custom-scrollbar::-webkit-scrollbar-button:horizontal:decrement,
+.custom-scrollbar::-webkit-scrollbar-button:horizontal:increment,
+.custom-scrollbar::-webkit-scrollbar-button:vertical:decrement,
+.custom-scrollbar::-webkit-scrollbar-button:vertical:increment {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  -webkit-appearance: none !important;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track,
+.theme-scrollbar::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 9999px;
+  margin: 2px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb,
+.theme-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28);
+  border-radius: 9999px;
+  border: none;
+  transition: all var(--transition-fast);
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover,
+.theme-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.45);
+}
+
+[data-theme='light'] .custom-scrollbar::-webkit-scrollbar-track,
+[data-theme='light'] .theme-scrollbar::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme='light'] .custom-scrollbar::-webkit-scrollbar-thumb,
+[data-theme='light'] .theme-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.3);
+}
+
+[data-theme='light'] .custom-scrollbar::-webkit-scrollbar-thumb:hover,
+[data-theme='light'] .theme-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary);
+}
+
+/* Hide Scrollbar Utility (Zero Width, No Track, No Native Arrows) */
+.scrollbar-none {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Dedicated Sleek Scrollbar for Daily Routine Habits Box (Completely Arrow-Free) */
+.routine-habits-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.routine-habits-scrollbar::-webkit-scrollbar-button,
+.routine-habits-scrollbar::-webkit-scrollbar-button:single-button,
+.routine-habits-scrollbar::-webkit-scrollbar-button:vertical:decrement,
+.routine-habits-scrollbar::-webkit-scrollbar-button:vertical:increment,
+.routine-habits-scrollbar::-webkit-scrollbar-button:start:decrement,
+.routine-habits-scrollbar::-webkit-scrollbar-button:end:increment {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  -webkit-appearance: none !important;
+}
+
+.routine-habits-scrollbar::-webkit-scrollbar-track,
+.routine-habits-scrollbar::-webkit-scrollbar-track-piece {
+  background: transparent !important;
+  border-radius: 9999px;
+  margin: 0;
+}
+
+.routine-habits-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.28) !important;
+  border-radius: 9999px !important;
+  border: none !important;
+  transition: all var(--transition-fast);
+}
+
+.routine-habits-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary) !important;
+  box-shadow: 0 0 6px rgba(99, 102, 241, 0.5);
+}
+
+[data-theme='light'] .routine-habits-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(15, 23, 42, 0.3) !important;
+}
+
+[data-theme='light'] .routine-habits-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-primary) !important;
+}
+
+/* Studio Glassmorphism & Surface Utilities */
+.studio-glass {
+  background: rgba(14, 14, 17, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.6);
+}
+
+[data-theme='light'] .studio-glass {
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.08);
+}
+
+.studio-card {
+  background-color: var(--bg-surface-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: 14px;
+  box-shadow: var(--shadow-card);
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+
+.studio-inner-card {
+  background-color: var(--bg-surface-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: 12px;
+  transition: border-color var(--transition-fast), background-color var(--transition-fast);
+}
+
+.studio-btn {
+  background-color: var(--bg-surface-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  border-radius: 8px;
+  transition: all var(--transition-fast);
+  cursor: pointer;
+}
+.studio-btn:hover {
+  background-color: var(--bg-surface-hover);
+  border-color: var(--border-medium);
+}
+.studio-btn:active {
+  transform: scale(0.98);
+}
+
+[data-theme='light'] .studio-btn {
+  background-color: #ffffff;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+[data-theme='light'] .studio-btn:hover {
+  background-color: #f8fafc;
+  border-color: #94a3b8;
+}
+
+.studio-badge-current,
+.studio-badge-active {
+  background-color: var(--bg-surface-subtle);
+  border: 1px solid var(--border-medium);
+  color: var(--text-primary);
+  font-size: 9.5px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+[data-theme='light'] .studio-badge-current,
+[data-theme='light'] .studio-badge-active {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.studio-pill {
+  border-radius: 9999px;
+  border: 1px solid var(--border-subtle);
+}
+
+.shadow-floating {
+  box-shadow: var(--shadow-dropdown);
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Focus highlight animation for Today button feedback */
+.studio-focus-highlight {
+  outline: 2px solid var(--accent-primary) !important;
+  box-shadow: 0 0 25px rgba(99, 102, 241, 0.55), 0 0 10px var(--accent-primary) !important;
+  animation: studio-glow-pulse 1.2s ease-in-out !important;
+}
+
+@keyframes studio-glow-pulse {
+  0% { transform: scale(1); box-shadow: 0 0 5px var(--accent-primary); }
+  50% { transform: scale(1.03); box-shadow: 0 0 25px rgba(99, 102, 241, 0.7), 0 0 12px var(--accent-primary); }
+  100% { transform: scale(1); box-shadow: 0 0 5px var(--accent-primary); }
+}
+
+.reduce-motion * {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Remove default number input spinners across all browsers */
+input[type=number]::-webkit-inner-spin-button,
+input[type=number]::-webkit-outer-spin-button {
+  -webkit-appearance: none !important;
+  margin: 0 !important;
+}
+input[type=number] {
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+}
+
