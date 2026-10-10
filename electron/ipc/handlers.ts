@@ -164,7 +164,9 @@ export function registerIpcHandlers(
         title,
         body,
         icon: iconPath,
+        actions: [{ type: 'button', text: 'Stop' }],
       });
+      n.on('action', () => n.close());
       n.on('click', () => {
         if (mainWindow) {
           if (mainWindow.isMinimized()) mainWindow.restore();

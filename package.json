@@ -29,6 +29,7 @@
   "dependencies": {
     "@capacitor/android": "^8.5.3",
     "@capacitor/core": "^8.5.3",
+    "@capacitor/local-notifications": "^8.3.1",
     "better-sqlite3": "^13.0.3",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",

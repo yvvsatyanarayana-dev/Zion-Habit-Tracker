@@ -18,6 +18,13 @@ import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { useHabitStore } from './store/useHabitStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { MobileHeader, MobileNavigation } from './components/ui/MobileChrome';
+import {
+  DAILY_REMINDER_STOP_ACTION,
+  dismissAndroidReminder,
+  isAndroidApp,
+  syncAndroidDailyReminder,
+} from './lib/reminders';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 export const App: React.FC = () => {
   const init = useHabitStore((s) => s.init);
@@ -29,8 +36,42 @@ export const App: React.FC = () => {
 
   // Initialize store from SQLite/localStorage on launch
   useEffect(() => {
-    init();
+    void init().then(async () => {
+      const reminderTime = useHabitStore.getState().settings.reminder_time;
+      await syncAndroidDailyReminder(reminderTime);
+    }).catch((error: unknown) => {
+      console.error('Failed to initialize daily reminders:', error);
+    });
   }, [init]);
+
+  useEffect(() => {
+    if (!isAndroidApp()) return;
+    let cancelled = false;
+    const setupNotificationActions = async () => {
+      const listener = await LocalNotifications.addListener(
+        'localNotificationActionPerformed',
+        async ({ actionId, notification }) => {
+          if (actionId === DAILY_REMINDER_STOP_ACTION) {
+            try {
+              await dismissAndroidReminder(notification.id);
+            } catch (error) {
+              console.error('Failed to dismiss Android reminder notification:', error);
+            }
+          }
+        }
+      );
+      if (cancelled) {
+        await listener.remove();
+      }
+    };
+
+    void setupNotificationActions().catch((error: unknown) => {
+      console.error('Failed to register daily reminder actions:', error);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Global keyboard shortcuts (Ctrl+K, T, N, etc.)
   useKeyboardShortcuts();

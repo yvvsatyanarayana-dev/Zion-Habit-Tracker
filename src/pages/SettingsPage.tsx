@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Header } from '../components/ui/Header';
 import { Card } from '../components/ui/Card';
 import { ToggleSwitch } from '../components/ui/ToggleSwitch';
@@ -23,6 +23,11 @@ import {
 import type { WeekStartDay, ClockFormat, DensityMode } from '../lib/types';
 import { exportCSVHistory, exportCSVMatrix, exportJSONBackup } from '../lib/exportUtils';
 import { sound } from '../lib/audio';
+import {
+  isAndroidApp,
+  showAndroidTestReminder,
+  syncAndroidDailyReminder,
+} from '../lib/reminders';
 
 export const SettingsPage: React.FC = () => {
   const settings = useHabitStore((s) => s.settings);
@@ -39,6 +44,33 @@ export const SettingsPage: React.FC = () => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentTheme = settings.theme || 'dark';
+  const isAndroid = isAndroidApp();
+
+  useEffect(() => {
+    if (!isAndroid) return;
+    let active = true;
+    void syncAndroidDailyReminder(settings.reminder_time)
+      .then((status) => {
+        if (active) {
+          setNotificationStatus(
+            status ?? (settings.reminder_time ? 'Daily reminder is set on this device.' : '')
+          );
+        }
+      })
+      .catch((error: unknown) => {
+        console.error('Failed to schedule Android daily reminder:', error);
+        if (active) {
+          setNotificationStatus(
+            error instanceof Error
+              ? error.message
+              : 'Could not schedule the reminder. Check Android notification settings and try again.'
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [isAndroid, settings.reminder_time]);
 
   const handleExportJSON = () => {
     exportJSONBackup(habits, checkins, allCheckinsList, settings, currentDate);
@@ -73,16 +105,38 @@ export const SettingsPage: React.FC = () => {
   };
 
   const handleTestNotification = async () => {
-    if (window.api) {
-      const sent = await window.api.notify(
-        'Habit Tracker Reminder',
-        'Time to close your daily activity rings! Keep the momentum going.'
+    try {
+      if (isAndroid) {
+        const status = await showAndroidTestReminder();
+        setNotificationStatus(status ?? 'Test notification will arrive in a few seconds.');
+      } else if (window.api) {
+        const sent = await window.api.notify(
+          'Habit Tracker Reminder',
+          'Time to close your daily activity rings! Keep the momentum going.'
+        );
+        setNotificationStatus(sent ? 'Desktop notification sent successfully!' : 'Desktop notifications not enabled.');
+      } else {
+        setNotificationStatus('Notifications are available in the installed Android or Electron app.');
+      }
+    } catch (error) {
+      console.error('Failed to send test reminder:', error);
+      setNotificationStatus(
+        error instanceof Error ? error.message : 'Could not send the test notification. Check notification permissions.'
       );
-      setNotificationStatus(sent ? 'Desktop notification sent successfully!' : 'Desktop notifications not enabled.');
-    } else {
-      setNotificationStatus('Desktop notifications require Electron app.');
     }
     setTimeout(() => setNotificationStatus(''), 4000);
+  };
+
+  const handleReminderTimeChange = async (reminderTime: string) => {
+    try {
+      await updateSetting('reminder_time', reminderTime);
+      if (isAndroid) setNotificationStatus('Updating daily reminder…');
+    } catch (error) {
+      console.error('Failed to save daily reminder time:', error);
+      setNotificationStatus(
+        error instanceof Error ? error.message : 'Could not save the reminder time.'
+      );
+    }
   };
 
   const handleToggleStartup = async (checked: boolean) => {
@@ -475,64 +529,71 @@ export const SettingsPage: React.FC = () => {
                 style={{ color: 'var(--text-primary)', letterSpacing: '-0.015em' }}
                 className="text-[16px] font-bold"
               >
-                Operating System & Native Desktop Integration
+                {isAndroid ? 'Notifications & Reminders' : 'Operating System & Native Desktop Integration'}
               </h2>
               <p style={{ color: 'var(--text-secondary)' }} className="text-[12px] font-normal">
-                Windows startup, background system tray, native OS notifications, and local storage
+                {isAndroid
+                  ? 'Daily reminders on this device'
+                  : 'Windows startup, background system tray, native OS notifications, and local storage'}
               </p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Launch on Windows Startup */}
-            <div className="flex items-center justify-between p-3.5 rounded-[12px] border" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
-              <div className="pr-3">
-                <span style={{ color: 'var(--text-primary)' }} className="text-[14px] font-semibold block">
-                  Launch on Windows Startup
-                </span>
-                <span style={{ color: 'var(--text-secondary)' }} className="text-[12px]">
-                  Automatically start Habit Tracker in background when signing in
-                </span>
+            {!isAndroid && (
+              <div className="flex items-center justify-between p-3.5 rounded-[12px] border" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
+                <div className="pr-3">
+                  <span style={{ color: 'var(--text-primary)' }} className="text-[14px] font-semibold block">
+                    Launch on Windows Startup
+                  </span>
+                  <span style={{ color: 'var(--text-secondary)' }} className="text-[12px]">
+                    Automatically start Habit Tracker in background when signing in
+                  </span>
+                </div>
+                <ToggleSwitch
+                  checked={settings.launch_on_startup}
+                  onChange={handleToggleStartup}
+                  ariaLabel="Toggle launch on startup"
+                />
               </div>
-              <ToggleSwitch
-                checked={settings.launch_on_startup}
-                onChange={handleToggleStartup}
-                ariaLabel="Toggle launch on startup"
-              />
-            </div>
+            )}
 
             {/* Minimize to System Tray */}
-            <div className="flex items-center justify-between p-3.5 rounded-[12px] border" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
-              <div className="pr-3">
-                <span style={{ color: 'var(--text-primary)' }} className="text-[14px] font-semibold block">
-                  Minimize to System Tray
-                </span>
-                <span style={{ color: 'var(--text-secondary)' }} className="text-[12px]">
-                  Keep app active in Windows tray when closed so daily reminders fire
-                </span>
+            {!isAndroid && (
+              <div className="flex items-center justify-between p-3.5 rounded-[12px] border" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
+                <div className="pr-3">
+                  <span style={{ color: 'var(--text-primary)' }} className="text-[14px] font-semibold block">
+                    Minimize to System Tray
+                  </span>
+                  <span style={{ color: 'var(--text-secondary)' }} className="text-[12px]">
+                    Keep app active in Windows tray when closed so daily reminders fire
+                  </span>
+                </div>
+                <ToggleSwitch
+                  checked={settings.minimize_to_tray}
+                  onChange={handleToggleTray}
+                  ariaLabel="Toggle minimize to system tray"
+                />
               </div>
-              <ToggleSwitch
-                checked={settings.minimize_to_tray}
-                onChange={handleToggleTray}
-                ariaLabel="Toggle minimize to system tray"
-              />
-            </div>
+            )}
 
             {/* Scheduled Daily Reminder */}
             <div className="flex items-center justify-between p-3.5 rounded-[12px] border" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
               <div className="pr-3">
                 <span style={{ color: 'var(--text-primary)' }} className="text-[14px] font-semibold block">
-                  Daily Desktop Reminder
+                  Daily Reminder
                 </span>
                 <span style={{ color: 'var(--text-secondary)' }} className="text-[12px]">
-                  Sends a native OS notification at your chosen hour
+                  {isAndroid
+                    ? 'Get a daily Android notification. Stop dismisses only that reminder.'
+                    : 'Sends a native OS notification at your chosen hour. Stop dismisses only that reminder.'}
                 </span>
               </div>
               <div className="flex items-center gap-2">
                 <input
                   type="time"
                   value={settings.reminder_time}
-                  onChange={(e) => updateSetting('reminder_time', e.target.value)}
+                  onChange={(e) => void handleReminderTimeChange(e.target.value)}
                   style={{
                     backgroundColor: 'var(--bg-surface-elevated)',
                     borderColor: 'var(--border-subtle)',
@@ -558,33 +619,42 @@ export const SettingsPage: React.FC = () => {
             </div>
 
             {/* Local Database Location */}
-            <div className="flex items-center justify-between p-3.5 rounded-[12px] border" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
-              <div className="pr-3">
-                <span style={{ color: 'var(--text-primary)' }} className="text-[14px] font-semibold block">
-                  Local SQLite Data Location
-                </span>
-                <span style={{ color: 'var(--text-secondary)' }} className="text-[12px]">
-                  Access your offline database files in Windows File Explorer
-                </span>
+            {!isAndroid && (
+              <div className="flex items-center justify-between p-3.5 rounded-[12px] border" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
+                <div className="pr-3">
+                  <span style={{ color: 'var(--text-primary)' }} className="text-[14px] font-semibold block">
+                    Local SQLite Data Location
+                  </span>
+                  <span style={{ color: 'var(--text-secondary)' }} className="text-[12px]">
+                    Access your offline database files in Windows File Explorer
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleOpenDataFolder}
+                  style={{
+                    backgroundColor: 'var(--bg-surface-elevated)',
+                    borderColor: 'var(--border-subtle)',
+                    color: 'var(--text-primary)',
+                  }}
+                  className="px-3 py-1.5 rounded-[10px] text-[12px] font-semibold flex items-center gap-1.5 transition-colors border hover:bg-[var(--bg-surface-hover)] cursor-pointer whitespace-nowrap"
+                >
+                  <FolderOpen size={13} style={{ color: 'var(--accent-primary)' }} />
+                  <span>Open Folder</span>
+                </button>
               </div>
-              <button
-                type="button"
-                onClick={handleOpenDataFolder}
-                style={{
-                  backgroundColor: 'var(--bg-surface-elevated)',
-                  borderColor: 'var(--border-subtle)',
-                  color: 'var(--text-primary)',
-                }}
-                className="px-3 py-1.5 rounded-[10px] text-[12px] font-semibold flex items-center gap-1.5 transition-colors border hover:bg-[var(--bg-surface-hover)] cursor-pointer whitespace-nowrap"
-              >
-                <FolderOpen size={13} style={{ color: 'var(--accent-primary)' }} />
-                <span>Open Folder</span>
-              </button>
-            </div>
+            )}
           </div>
 
           {notificationStatus && (
-            <div className="px-3.5 py-2 rounded-[8px] bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[12.5px] font-semibold animate-in fade-in duration-150">
+            <div
+              role="status"
+              className={`px-3.5 py-2 rounded-[8px] border text-[12.5px] font-semibold animate-in fade-in duration-150 ${
+                /allow|could not|failed|unavailable/i.test(notificationStatus)
+                  ? 'bg-amber-500/10 border-amber-500/20 text-amber-400'
+                  : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400'
+              }`}
+            >
               {notificationStatus}
             </div>
           )}

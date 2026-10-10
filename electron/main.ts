@@ -207,7 +207,7 @@ function setupReminderCheck(): void {
       const hours = String(now.getHours()).padStart(2, '0');
       const minutes = String(now.getMinutes()).padStart(2, '0');
       const currentTimeStr = `${hours}:${minutes}`;
-      const todayDateStr = now.toISOString().split('T')[0];
+      const todayDateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
       if (currentTimeStr === reminderTime && lastNotifiedDate !== todayDateStr) {
         lastNotifiedDate = todayDateStr;
@@ -217,7 +217,9 @@ function setupReminderCheck(): void {
             title: 'Zion Reminder',
             body: "Time to check off today's habits in Zion! Keep your consistency and streak burning.",
             icon: getAppIconPath(),
+            actions: [{ type: 'button', text: 'Stop' }],
           });
+          notification.on('action', () => notification.close());
           notification.on('click', () => {
             if (mainWindow) {
               if (mainWindow.isMinimized()) mainWindow.restore();

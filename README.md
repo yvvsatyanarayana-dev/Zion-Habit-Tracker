@@ -268,6 +268,8 @@ cd android
 
 The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`. On macOS or Linux, use `./gradlew assembleDebug` instead. Run `npm run android:sync` again after changing web code so the Android project gets the latest build.
 
+Set a time under **Settings → Daily Reminder** to receive a repeating local notification on Android or Electron. Android asks for notification permission when needed; Android may deliver reminders slightly later when exact alarms are unavailable. The **Stop** action dismisses only the current notification and does not disable future reminders. Electron must remain running (or minimized to the system tray) for its scheduled reminder to fire.
+
 #### Build an APK with GitHub Actions
 
 The `Build Android APK` workflow builds a debug APK on a GitHub-hosted runner, so Android Studio, the JDK, and the Android SDK do not need to be installed locally. Push the repository to GitHub and open the **Actions** tab. The workflow runs on pushes and pull requests; you can also start it manually with **Run workflow**. When it completes, open the run and download the `Zion-Habit-Tracker-Android` artifact from its summary. It contains `Zion-Habit-Tracker.apk`, a debug build for testing rather than a signed Play Store release, and is retained for 14 days.
