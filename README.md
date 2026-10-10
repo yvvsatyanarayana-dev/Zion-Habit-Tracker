@@ -270,7 +270,7 @@ The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`. On ma
 
 #### Build an APK with GitHub Actions
 
-The `Build Android APK` workflow builds a debug APK on a GitHub-hosted runner, so Android Studio, the JDK, and the Android SDK do not need to be installed locally. Push the repository to GitHub and open the **Actions** tab. The workflow runs on pushes and pull requests; you can also start it manually with **Run workflow**. When it completes, open the run and download the `zion-android-debug-apk` artifact from its summary. The artifact is retained for 14 days and contains a debug APK for testing, not a signed Play Store release.
+The `Build Android APK` workflow builds a debug APK on a GitHub-hosted runner, so Android Studio, the JDK, and the Android SDK do not need to be installed locally. Push the repository to GitHub and open the **Actions** tab. The workflow runs on pushes and pull requests; you can also start it manually with **Run workflow**. When it completes, open the run and download the `Zion-Habit-Tracker-Android` artifact from its summary. It contains `Zion-Habit-Tracker.apk`, a debug build for testing rather than a signed Play Store release, and is retained for 14 days.
 
 ### Running Unit Tests
 

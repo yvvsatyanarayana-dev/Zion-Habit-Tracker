@@ -494,9 +494,13 @@ body {
   .mobile-brand {
     gap: 9px;
     color: var(--text-primary);
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 800;
     letter-spacing: -0.04em;
+  }
+
+  .mobile-brand span {
+    white-space: nowrap;
   }
 
   .mobile-brand img {
@@ -553,9 +557,11 @@ body {
 
   .mobile-navigation {
     display: grid;
-    min-height: 66px;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    padding: 7px 5px;
+    min-height: 72px;
+    flex-shrink: 0;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+    padding: 7px 8px;
     border-top: 1px solid var(--border-subtle);
     background: var(--bg-surface);
   }
@@ -563,21 +569,31 @@ body {
   .mobile-navigation-item {
     display: flex;
     min-width: 0;
+    min-height: 54px;
     align-items: center;
     justify-content: center;
     flex-direction: column;
-    gap: 4px;
+    gap: 5px;
+    padding: 4px 2px;
     border: 0;
-    border-radius: 12px;
+    border-radius: 14px;
     background: transparent;
     color: var(--text-muted);
     font-family: inherit;
-    font-size: 10px;
+    font-size: 10.5px;
     font-weight: 600;
+    line-height: 1;
+    touch-action: manipulation;
+    transition: background-color 160ms ease, color 160ms ease, transform 120ms ease;
   }
 
   .mobile-navigation-item.active {
     color: var(--accent-primary);
+    background: var(--bg-surface-elevated);
+  }
+
+  .mobile-navigation-item:active {
+    transform: scale(0.96);
   }
 
   .mobile-more-menu {

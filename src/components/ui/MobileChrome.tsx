@@ -30,7 +30,7 @@ export const MobileHeader: React.FC = () => {
     <header className="mobile-header">
       <div className="mobile-brand">
         <img src={appLogo} alt="" />
-        <span>Zion</span>
+        <span>Zion Habit Tracker</span>
       </div>
       <div className="mobile-header-actions">
         <button
