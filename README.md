@@ -272,7 +272,7 @@ Set a time under **Settings → Daily Reminder** to receive a repeating local no
 
 #### Build an APK with GitHub Actions
 
-The `Build Android APK` workflow builds a debug APK on a GitHub-hosted runner, so Android Studio, the JDK, and the Android SDK do not need to be installed locally. Push the repository to GitHub and open the **Actions** tab. The workflow runs on pushes and pull requests; you can also start it manually with **Run workflow**. When it completes, open the run and download the `Zion-Habit-Tracker-Android` artifact from its summary. It contains `Zion-Habit-Tracker.apk`, a debug build for testing rather than a signed Play Store release, and is retained for 14 days.
+The `Build Android APK` workflow builds a debug APK on a GitHub-hosted runner, so Android Studio, the JDK, and the Android SDK do not need to be installed locally. Push the repository to GitHub and open the **Actions** tab. The workflow runs on pushes and pull requests; you can also start it manually with **Run workflow**. When it completes, open the run and download the `Zion HabitTracker` artifact from its summary. It contains `Zion HabitTracker.apk`, a debug build for testing rather than a signed Play Store release, and is retained for 14 days.
 
 ### Running Unit Tests
 

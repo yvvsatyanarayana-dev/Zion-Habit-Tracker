@@ -1,6 +1,6 @@
 {
   "appId": "com.satyanarayana.zion",
-  "appName": "Zion Habit Tracker",
+  "appName": "Zion HabitTracker",
   "webDir": "dist",
   "android": {
     "backgroundColor": "#09090b"
