@@ -17,6 +17,7 @@ import { LoginPage } from './pages/LoginPage';
 import { ErrorBoundary } from './components/ui/ErrorBoundary';
 import { useHabitStore } from './store/useHabitStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
+import { MobileHeader, MobileNavigation } from './components/ui/MobileChrome';
 
 export const App: React.FC = () => {
   const init = useHabitStore((s) => s.init);
@@ -67,8 +68,9 @@ export const App: React.FC = () => {
     return (
       <div
         style={{ backgroundColor: 'var(--bg-canvas)' }}
-        className="h-screen w-screen flex flex-col select-none overflow-hidden"
+        className="mobile-app h-screen w-screen flex flex-col select-none overflow-hidden"
       >
+        <MobileHeader />
         <TitleBar />
         <div className="flex-1 flex items-center justify-center">
           <div className="w-8 h-8 rounded-full border-2 border-[var(--accent-primary)] border-t-transparent animate-spin" />
@@ -82,8 +84,9 @@ export const App: React.FC = () => {
     return (
       <div
         style={{ backgroundColor: 'var(--bg-canvas)' }}
-        className="h-screen w-screen flex flex-col select-none overflow-hidden"
+        className="mobile-app h-screen w-screen flex flex-col select-none overflow-hidden"
       >
+        <MobileHeader />
         <TitleBar />
         <div className="flex-1 overflow-hidden">
           <RegisterPage />
@@ -97,8 +100,9 @@ export const App: React.FC = () => {
     return (
       <div
         style={{ backgroundColor: 'var(--bg-canvas)' }}
-        className="h-screen w-screen flex flex-col select-none overflow-hidden"
+        className="mobile-app h-screen w-screen flex flex-col select-none overflow-hidden"
       >
+        <MobileHeader />
         <TitleBar />
         <div className="flex-1 overflow-hidden">
           <LoginPage />
@@ -111,20 +115,21 @@ export const App: React.FC = () => {
   return (
     <div
       style={{ backgroundColor: 'var(--bg-canvas)', color: 'var(--text-primary)' }}
-      className={`h-screen w-screen flex flex-col select-none overflow-hidden ${
+      className={`mobile-app h-screen w-screen flex flex-col select-none overflow-hidden ${
         reduceMotion ? 'reduce-motion' : ''
       }`}
     >
+      <MobileHeader />
       {/* Frameless Custom Title Bar */}
       <TitleBar />
 
       {/* Main App Layout: Sidebar + Page Content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="mobile-app-body flex-1 flex overflow-hidden">
         <Sidebar />
 
         <main
           ref={mainRef}
-          className={`flex-1 px-4 py-2.5 sm:px-6 sm:py-3 ${
+          className={`mobile-main flex-1 px-4 py-2.5 sm:px-6 sm:py-3 ${
             activeTab === 'habits'
               ? 'overflow-hidden flex flex-col min-h-0'
               : 'overflow-y-auto custom-scrollbar'
@@ -141,6 +146,7 @@ export const App: React.FC = () => {
           </ErrorBoundary>
         </main>
       </div>
+      <MobileNavigation />
 
       {/* Modals & Overlays */}
       <HabitModal />

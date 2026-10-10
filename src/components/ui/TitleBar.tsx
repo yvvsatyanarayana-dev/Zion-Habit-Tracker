@@ -146,7 +146,7 @@ export const TitleBar: React.FC = () => {
         backgroundColor: 'var(--bg-surface)',
         borderColor: 'var(--border-subtle)',
       }}
-      className="h-[38px] w-full flex items-center justify-between select-none titlebar-drag border-b z-50 flex-shrink-0 relative transition-colors duration-150 pl-2.5 pr-0"
+      className="desktop-titlebar h-[38px] w-full flex items-center justify-between select-none titlebar-drag border-b z-50 flex-shrink-0 relative transition-colors duration-150 pl-2.5 pr-0"
     >
       {/* Left: Professional Brand Emblem & Progress Chip */}
       <div className="flex items-center gap-2.5 titlebar-nodrag pl-0.5 flex-shrink-0">

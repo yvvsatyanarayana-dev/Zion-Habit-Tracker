@@ -436,3 +436,206 @@ input[type=number] {
   appearance: textfield !important;
 }
 
+.mobile-header,
+.mobile-navigation {
+  display: none;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  min-height: 100dvh;
+}
+
+@media (max-width: 700px) {
+  html,
+  body,
+  #root {
+    width: 100%;
+    min-width: 0;
+    height: 100%;
+    min-height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    min-height: 100dvh;
+  }
+
+  .mobile-app {
+    width: 100%;
+    height: 100%;
+    height: 100dvh;
+    min-height: 0;
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .mobile-header {
+    display: flex;
+    min-height: 56px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    background: var(--bg-surface);
+    border-bottom: 1px solid var(--border-subtle);
+  }
+
+  .mobile-brand,
+  .mobile-header-actions {
+    display: flex;
+    align-items: center;
+  }
+
+  .mobile-brand {
+    gap: 9px;
+    color: var(--text-primary);
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+  }
+
+  .mobile-brand img {
+    width: 28px;
+    height: 28px;
+    border-radius: 7px;
+    object-fit: contain;
+  }
+
+  .mobile-header-actions {
+    gap: 8px;
+  }
+
+  .mobile-icon-button {
+    display: flex;
+    width: 42px;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--border-subtle);
+    border-radius: 14px;
+    background: var(--bg-surface-elevated);
+    color: var(--text-secondary);
+  }
+
+  .desktop-titlebar,
+  .app-sidebar {
+    display: none !important;
+  }
+
+  .mobile-hide {
+    display: none !important;
+  }
+
+  .mobile-app-body {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .mobile-main {
+    width: 100%;
+    min-width: 0;
+    min-height: 0;
+    padding: 16px 14px 20px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .mobile-main > div {
+    padding-bottom: 20px;
+  }
+
+  .mobile-navigation {
+    display: grid;
+    min-height: 66px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    padding: 7px 5px;
+    border-top: 1px solid var(--border-subtle);
+    background: var(--bg-surface);
+  }
+
+  .mobile-navigation-item {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 4px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--text-muted);
+    font-family: inherit;
+    font-size: 10px;
+    font-weight: 600;
+  }
+
+  .mobile-navigation-item.active {
+    color: var(--accent-primary);
+  }
+
+  .mobile-more-menu {
+    position: fixed;
+    right: 12px;
+    bottom: calc(76px + env(safe-area-inset-bottom));
+    z-index: 60;
+    width: min(240px, calc(100vw - 24px));
+    padding: 8px;
+    border: 1px solid var(--border-medium);
+    border-radius: 18px;
+    background: var(--bg-surface-elevated);
+    box-shadow: var(--shadow-dropdown);
+  }
+
+  .mobile-more-item {
+    display: flex;
+    width: 100%;
+    min-height: 48px;
+    align-items: center;
+    gap: 12px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--text-primary);
+    font-family: inherit;
+    text-align: left;
+  }
+
+  .mobile-navigation-item:focus-visible,
+  .mobile-icon-button:focus-visible {
+    outline: 2px solid var(--accent-primary);
+    outline-offset: 2px;
+  }
+
+  .mobile-main .grid {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .mobile-main [class*="grid-cols-2"],
+  .mobile-main [class*="grid-cols-3"],
+  .mobile-main [class*="grid-cols-4"] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .mobile-main [class*="max-w-["] {
+    max-width: 100% !important;
+  }
+
+  .mobile-main [class*="overflow-hidden"] {
+    min-width: 0;
+  }
+
+  .mobile-main input,
+  .mobile-main textarea,
+  .mobile-main select,
+  .mobile-main button {
+    font-size: max(16px, 1em);
+  }
+}

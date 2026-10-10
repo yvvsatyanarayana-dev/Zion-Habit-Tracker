@@ -9,15 +9,26 @@
     "build:electron": "esbuild electron/main.ts electron/preload.ts --bundle --platform=node --outdir=dist-electron --external:electron --external:better-sqlite3",
     "build:renderer": "vite build",
     "build": "npm run build:electron && npm run build:renderer",
+    "build:web": "vite build",
+    "android:sync": "npm run build:web && cap sync android",
+    "android:open": "cap open android",
+    "android:run": "npm run android:sync && cap run android",
     "dist": "npm run build && electron-builder --publish never",
     "test": "vitest run"
   },
-  "keywords": ["habit-tracker", "electron", "react", "fitness"],
+  "keywords": [
+    "habit-tracker",
+    "electron",
+    "react",
+    "fitness"
+  ],
   "author": {
     "name": "Satyanarayana"
   },
   "license": "MIT",
   "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
     "better-sqlite3": "^13.0.3",
     "canvas-confetti": "^1.9.4",
     "clsx": "^2.1.1",
@@ -30,6 +41,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.3",
     "@tailwindcss/vite": "^4.3.3",
     "@types/better-sqlite3": "^9.6.0",
     "@types/canvas-confetti": "^1.9.0",
@@ -73,7 +85,9 @@
     ],
     "win": {
       "icon": "assets/icon.ico",
-      "target": ["nsis"],
+      "target": [
+        "nsis"
+      ],
       "legalTrademarks": "Zion Habit Tracker by Satyanarayana",
       "requestedExecutionLevel": "asInvoker"
     },
@@ -90,10 +104,14 @@
       "uninstallerIcon": "assets/icon.ico"
     },
     "mac": {
-      "target": ["dmg"]
+      "target": [
+        "dmg"
+      ]
     },
     "linux": {
-      "target": ["AppImage"]
+      "target": [
+        "AppImage"
+      ]
     }
   }
 }

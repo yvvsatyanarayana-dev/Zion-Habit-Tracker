@@ -88,7 +88,7 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
             color: 'var(--btn-primary-text)',
             boxShadow: 'var(--btn-primary-shadow)',
           }}
-          className="h-8 px-3.5 hover:opacity-90 rounded-[5px] flex items-center gap-1.5 text-[12.5px] font-bold transition-all active:scale-[0.98] cursor-pointer"
+          className="mobile-hide h-8 px-3.5 hover:opacity-90 rounded-[5px] flex items-center gap-1.5 text-[12.5px] font-bold transition-all active:scale-[0.98] cursor-pointer"
           title="Add Habit (N)"
         >
           <Plus size={15} strokeWidth={2.4} />
@@ -103,7 +103,7 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
             borderColor: 'var(--border-subtle)',
             color: 'var(--text-secondary)',
           }}
-          className="h-8 px-2.5 hover:text-[var(--text-primary)] rounded-[5px] flex items-center gap-1.5 text-[12px] font-medium transition-colors border cursor-pointer"
+          className="mobile-hide h-8 px-2.5 hover:text-[var(--text-primary)] rounded-[5px] flex items-center gap-1.5 text-[12px] font-medium transition-colors border cursor-pointer"
           title="Command Palette (Ctrl+K)"
         >
           <Search size={14} />

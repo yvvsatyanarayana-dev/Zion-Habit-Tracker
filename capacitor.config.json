@@ -1,0 +1,8 @@
+{
+  "appId": "com.satyanarayana.zion",
+  "appName": "Zion",
+  "webDir": "dist",
+  "android": {
+    "backgroundColor": "#09090b"
+  }
+}

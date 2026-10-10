@@ -9,7 +9,7 @@
 *Crafted for student developers, software engineers, and ambitious creators who demand peak productivity without compromise.*
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
-[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux-black?style=for-the-badge&logo=electron)](https://github.com)
+[![Platform](https://img.shields.io/badge/Platform-Windows%20%7C%20macOS%20%7C%20Linux%20%7C%20Android-black?style=for-the-badge&logo=electron)](https://github.com)
 [![100% Free Lifetime](https://img.shields.io/badge/Cost-100%25%20Free%20Lifetime-10b981?style=for-the-badge)](https://github.com)
 [![Offline First](https://img.shields.io/badge/Privacy-100%25%20Offline%20SQLite-6366f1?style=for-the-badge)](https://github.com)
 [![React 19](https://img.shields.io/badge/React-19.3.0-61dafb?style=for-the-badge&logo=react)](https://react.dev)
@@ -218,7 +218,7 @@ zion-habit-tracker/
 ## Getting Started
 
 ### Prerequisites
-- **Node.js**: `v18.0.0` or higher
+- **Node.js**: `v22.12.0` or higher
 - **npm**: `v9.0.0` or higher
 - **Git**
 
@@ -242,6 +242,35 @@ Start the Vite development server and launch the Electron application concurrent
 ```bash
 npm run dev
 ```
+
+### Android
+
+The Android app uses the existing React interface inside a Capacitor WebView and stores app data locally on the device. Install Android Studio with the Android SDK and JDK 17 or newer, then connect a device with USB debugging enabled or start an emulator.
+
+```bash
+npm run android:sync
+npm run android:open
+```
+
+In Android Studio, build or run the `android` project on your device or emulator. To launch directly on a connected device from the command line, use:
+
+```bash
+npm run android:run
+```
+
+To build a debug APK from the command line on Windows:
+
+```powershell
+npm run android:sync
+cd android
+.\gradlew.bat assembleDebug
+```
+
+The APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`. On macOS or Linux, use `./gradlew assembleDebug` instead. Run `npm run android:sync` again after changing web code so the Android project gets the latest build.
+
+#### Build an APK with GitHub Actions
+
+The `Build Android APK` workflow builds a debug APK on a GitHub-hosted runner, so Android Studio, the JDK, and the Android SDK do not need to be installed locally. Push the repository to GitHub and open the **Actions** tab. The workflow runs on pushes and pull requests; you can also start it manually with **Run workflow**. When it completes, open the run and download the `zion-android-debug-apk` artifact from its summary. The artifact is retained for 14 days and contains a debug APK for testing, not a signed Play Store release.
 
 ### Running Unit Tests
 

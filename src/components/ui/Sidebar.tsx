@@ -92,7 +92,7 @@ export const Sidebar: React.FC = () => {
         backgroundColor: 'var(--bg-surface)',
         borderColor: 'var(--border-subtle)',
       }}
-      className={`h-full border-r flex flex-col justify-between transition-all duration-200 flex-shrink-0 select-none z-20 ${
+      className={`app-sidebar h-full border-r flex flex-col justify-between transition-all duration-200 flex-shrink-0 select-none z-20 ${
         sidebarCollapsed ? 'w-[58px]' : 'w-[260px]'
       }`}
     >
