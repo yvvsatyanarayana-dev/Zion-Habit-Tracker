@@ -722,10 +722,10 @@ export const HabitModal: React.FC = () => {
                     borderColor: 'var(--border-subtle)',
                     color: 'var(--text-muted)',
                   }}
-                  className="h-8 px-2.5 rounded-[5px] border hover:text-[var(--text-primary)] flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer"
+                  className="min-h-[38px] px-3 rounded-lg border hover:text-[var(--text-primary)] flex items-center gap-1.5 text-xs font-semibold transition-colors cursor-pointer touch-manipulation"
                   title="Archive habit"
                 >
-                  <Archive size={13} />
+                  <Archive size={14} />
                   <span>Archive</span>
                 </button>
               </div>
@@ -741,7 +741,7 @@ export const HabitModal: React.FC = () => {
                 borderColor: 'var(--border-subtle)',
                 color: 'var(--text-primary)',
               }}
-              className="h-8 px-3.5 rounded-[5px] border text-xs font-semibold hover:border-[var(--border-medium)] transition-colors cursor-pointer"
+              className="min-h-[38px] px-4 rounded-lg border text-xs font-semibold hover:border-[var(--border-medium)] transition-colors cursor-pointer touch-manipulation active:scale-95"
             >
               Cancel
             </button>
@@ -754,9 +754,9 @@ export const HabitModal: React.FC = () => {
                 color: 'var(--btn-primary-text)',
                 boxShadow: 'var(--btn-primary-shadow)',
               }}
-              className="h-8 px-4 rounded-[5px] text-xs font-bold hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-1.5"
+              className="min-h-[38px] px-4 rounded-lg text-xs font-bold hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-1.5 touch-manipulation shadow-md"
             >
-              <Check size={13} strokeWidth={2.5} />
+              <Check size={14} strokeWidth={2.5} />
               <span>{editingHabit ? 'Save Changes' : 'Create Habit'}</span>
             </button>
           </div>

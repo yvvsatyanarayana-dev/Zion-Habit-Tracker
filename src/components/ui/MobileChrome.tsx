@@ -3,104 +3,142 @@ import {
   BarChart3,
   CheckSquare,
   LayoutDashboard,
-  Moon,
-  Sun,
   Flame,
-  MoreHorizontal,
-  Settings,
   UserRound,
-  BookOpen,
+  Search,
+  Settings,
+  Plus,
 } from 'lucide-react';
 import { useHabitStore } from '../../store/useHabitStore';
 import appLogo from '../../assets/icon.png';
 import type { TabType } from '../../lib/types';
 
-const mobileTabs: { id: TabType; label: string; icon: typeof LayoutDashboard }[] = [
+interface NavTab {
+  id: TabType;
+  label: string;
+  icon: React.ComponentType<{ size?: number; strokeWidth?: number; className?: string }>;
+}
+
+const mobileTabs: NavTab[] = [
   { id: 'dashboard', label: 'Home', icon: LayoutDashboard },
   { id: 'habits', label: 'Habits', icon: CheckSquare },
-  { id: 'analytics', label: 'Insights', icon: BarChart3 },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
   { id: 'streaks', label: 'Streaks', icon: Flame },
+  { id: 'profile', label: 'Profile', icon: UserRound },
 ];
 
 export const MobileHeader: React.FC = () => {
-  const theme = useHabitStore((state) => state.settings.theme || 'dark');
-  const toggleTheme = useHabitStore((state) => state.toggleTheme);
+  const activeTab = useHabitStore((state) => state.activeTab);
+  const setTab = useHabitStore((state) => state.setTab);
+  const openHabitModal = useHabitStore((state) => state.openHabitModal);
+  const setCommandPaletteOpen = useHabitStore((state) => state.setCommandPaletteOpen);
+  const authScreen = useHabitStore((state) => state.authScreen);
+
+  const isAuthPage = authScreen === 'login' || authScreen === 'register';
+
+  const getPageTitle = () => {
+    if (authScreen === 'login') return 'Sign In';
+    if (authScreen === 'register') return 'Create Account';
+
+    switch (activeTab) {
+      case 'dashboard':
+        return 'Today';
+      case 'habits':
+        return 'Daily Matrix';
+      case 'analytics':
+        return 'Analytics';
+      case 'streaks':
+        return 'Achievements';
+      case 'profile':
+        return 'Account';
+      case 'settings':
+        return 'Settings';
+      case 'guide':
+        return 'Guide';
+      default:
+        return 'Zion';
+    }
+  };
 
   return (
     <header className="mobile-header">
-      <div className="mobile-brand">
-        <img src={appLogo} alt="" />
-        <span>Zion Habit Tracker</span>
-      </div>
-      <div className="mobile-header-actions">
-        <button
-          type="button"
-          className="mobile-icon-button"
-          onClick={() => toggleTheme()}
-          aria-label={`Switch to ${theme === 'dark' ? 'light' : 'dark'} theme`}
+      <div className="mobile-header-inner">
+        {/* Left: Brand Identity / View Title */}
+        <div
+          className="mobile-header-left"
+          onClick={() => {
+            if (!isAuthPage) setTab('dashboard');
+          }}
         >
-          {theme === 'dark' ? <Sun size={19} /> : <Moon size={19} />}
-        </button>
+          <img src={appLogo} alt="Zion" className="mobile-header-logo" />
+          <div className="mobile-header-title-wrap">
+            <span className="mobile-header-title">{getPageTitle()}</span>
+            <span className="mobile-header-brand">Zion</span>
+          </div>
+        </div>
+
+        {/* Right: Actions - HIDDEN on login and user creation pages */}
+        {!isAuthPage && (
+          <div className="mobile-header-right">
+            <button
+              type="button"
+              className="mobile-header-icon-btn"
+              onClick={() => setCommandPaletteOpen(true)}
+              aria-label="Search"
+              title="Search (Ctrl+K)"
+            >
+              <Search size={17} strokeWidth={1.8} />
+            </button>
+
+            <button
+              type="button"
+              className={`mobile-header-icon-btn${activeTab === 'settings' ? ' is-active' : ''}`}
+              onClick={() => setTab('settings')}
+              aria-label="Settings"
+              title="Settings"
+            >
+              <Settings size={17} strokeWidth={1.8} />
+            </button>
+
+            <button
+              type="button"
+              className="mobile-header-add-btn"
+              onClick={() => openHabitModal()}
+              aria-label="New habit"
+              title="Add Habit"
+            >
+              <Plus size={16} strokeWidth={2.4} />
+            </button>
+          </div>
+        )}
       </div>
     </header>
   );
 };
 
 export const MobileNavigation: React.FC = () => {
-  const [moreOpen, setMoreOpen] = React.useState(false);
   const activeTab = useHabitStore((state) => state.activeTab);
   const setTab = useHabitStore((state) => state.setTab);
 
   return (
-    <>
-      {moreOpen && (
-        <div className="mobile-more-menu">
-          {[
-            { id: 'profile' as const, label: 'User Profile', icon: UserRound },
-            { id: 'guide' as const, label: 'User Guide', icon: BookOpen },
-            { id: 'settings' as const, label: 'Settings', icon: Settings },
-          ].map(({ id, label, icon: Icon }) => (
-            <button
-              key={id}
-              type="button"
-              className="mobile-more-item"
-              onClick={() => {
-                setTab(id);
-                setMoreOpen(false);
-              }}
-            >
-              <Icon size={18} />
-              <span>{label}</span>
-            </button>
-          ))}
-        </div>
-      )}
-      <nav className="mobile-navigation" aria-label="Main Navigation">
-        {mobileTabs.map(({ id, label, icon: Icon }) => (
+    <nav className="mobile-navigation" aria-label="Bottom Navigation">
+      {mobileTabs.map(({ id, label, icon: Icon }) => {
+        const isActive = activeTab === id;
+        return (
           <button
             key={id}
             type="button"
-            className={`mobile-navigation-item${activeTab === id ? ' active' : ''}`}
-            onClick={() => {
-              setTab(id);
-              setMoreOpen(false);
-            }}
-            aria-current={activeTab === id ? 'page' : undefined}
+            className={`mobile-nav-item${isActive ? ' is-active' : ''}`}
+            onClick={() => setTab(id)}
+            aria-current={isActive ? 'page' : undefined}
           >
-            <Icon size={20} strokeWidth={activeTab === id ? 2.4 : 1.8} />
-            <span>{label}</span>
+            <span className="mobile-nav-icon">
+              <Icon size={20} strokeWidth={isActive ? 2.2 : 1.7} />
+            </span>
+            <span className="mobile-nav-label">{label}</span>
           </button>
-        ))}
-        <button
-          type="button"
-          className={`mobile-navigation-item${moreOpen || ['profile', 'guide', 'settings'].includes(activeTab) ? ' active' : ''}`}
-          onClick={() => setMoreOpen((open) => !open)}
-          aria-expanded={moreOpen}
-        >
-          <MoreHorizontal size={20} />
-          <span>More</span>
-        </button>
-      </nav>
-    </>
+        );
+      })}
+    </nav>
   );
 };

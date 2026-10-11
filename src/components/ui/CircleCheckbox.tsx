@@ -24,7 +24,7 @@ export const CircleCheckbox: React.FC<CircleCheckboxProps> = ({
   isToday = false,
   shape = 'circle',
 }) => {
-  const iconSize = size >= 28 ? 16 : 12;
+  const iconSize = size >= 28 ? 16 : 13;
   const isSquircle = shape === 'rounded';
 
   return (
@@ -39,45 +39,50 @@ export const CircleCheckbox: React.FC<CircleCheckboxProps> = ({
         e.stopPropagation();
         if (!disabled && onClick) onClick();
       }}
-      style={{
-        width: `${size}px`,
-        height: `${size}px`,
-        backgroundColor: checked
-          ? color
-          : isToday
-          ? 'rgba(124, 58, 237, 0.12)'
-          : 'rgba(255, 255, 255, 0.05)',
-        borderColor: checked
-          ? color
-          : isToday
-          ? 'var(--accent-primary)'
-          : 'rgba(255, 255, 255, 0.22)',
-        boxShadow: checked
-          ? `0 0 10px ${color}60, 0 2px 4px rgba(0, 0, 0, 0.4)`
-          : isToday
-          ? '0 0 10px var(--accent-glow)'
-          : undefined,
-      }}
-      className={`group/cb relative inline-flex items-center justify-center border transition-all duration-150 ease-out focus:outline-none focus:ring-2 focus:ring-white/40 select-none ${
-        isSquircle ? 'rounded-[6px]' : 'rounded-full'
-      } ${
+      style={
+        {
+          width: `${size}px`,
+          height: `${size}px`,
+          '--cb-color': color,
+          '--cb-glow': `${color}60`,
+          ...(checked
+            ? {
+                backgroundColor: color,
+                borderColor: color,
+                boxShadow: `0 2px 8px ${color}60, 0 1px 3px rgba(0, 0, 0, 0.25)`,
+              }
+            : isToday
+            ? {
+                borderColor: 'var(--checkbox-today-border)',
+                backgroundColor: 'var(--checkbox-today-bg)',
+                boxShadow: 'var(--checkbox-today-glow)',
+              }
+            : {
+                borderColor: 'var(--checkbox-unchecked-border)',
+                backgroundColor: 'var(--checkbox-unchecked-bg)',
+              }),
+        } as React.CSSProperties
+      }
+      className={`circle-checkbox group/cb relative inline-flex items-center justify-center border-[1.5px] border-solid transition-all duration-150 ease-out focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/40 select-none touch-manipulation after:content-[''] after:absolute after:-inset-2.5 after:rounded-full ${
+        isSquircle ? 'rounded-[7px]' : 'rounded-full'
+      } ${isToday ? 'is-today' : ''} ${checked ? 'is-checked' : ''} ${
         disabled
-          ? 'opacity-20 cursor-not-allowed'
-          : 'cursor-pointer hover:scale-110 active:scale-90 hover:border-white/60 hover:bg-white/10'
+          ? 'opacity-25 cursor-not-allowed'
+          : 'cursor-pointer hover:scale-108 active:scale-92'
       }`}
     >
       {checked ? (
         <Check
           size={iconSize}
-          color="#000000"
+          color="#ffffff"
           strokeWidth={3.5}
-          className="transition-transform duration-150 scale-100 animate-in fade-in zoom-in-75"
+          className="transition-transform duration-150 scale-100 animate-in fade-in zoom-in-75 drop-shadow-[0_1px_1px_rgba(0,0,0,0.35)]"
         />
       ) : (
         !disabled && (
           <span
             style={{ backgroundColor: color }}
-            className="w-1.5 h-1.5 rounded-full opacity-0 group-hover/cb:opacity-70 transition-opacity pointer-events-none"
+            className="w-1.5 h-1.5 rounded-full opacity-0 group-hover/cb:opacity-75 transition-opacity pointer-events-none"
           />
         )
       )}

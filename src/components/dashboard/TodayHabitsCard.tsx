@@ -161,6 +161,7 @@ export const TodayHabitsCard: React.FC = () => {
                     checked={isChecked}
                     color={habit.color}
                     size={28}
+                    isToday={true}
                     onClick={() => toggleCheckin(habit.id, todayStr)}
                     ariaLabel={`${habit.name}, Today`}
                   />
@@ -217,23 +218,23 @@ export const TodayHabitsCard: React.FC = () => {
                 </div>
 
                 {/* Right: Actions, Numeric Steppers & Reflection Note */}
-                <div className="flex items-center gap-2 self-end sm:self-center flex-shrink-0">
+                <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto mt-1.5 sm:mt-0 flex-shrink-0">
                   {/* Numeric Stepper if numeric habit */}
                   {isNumeric && (
                     <div className="flex items-center gap-1 p-0.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
                       <button
                         onClick={() => updateNumericValue(habit.id, todayStr, -stepAmount, true)}
-                        className="w-7 h-7 rounded-[5px] flex items-center justify-center text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
+                        className="w-8 h-8 rounded-[6px] flex items-center justify-center text-sm font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer touch-manipulation"
                         title={`Decrease by ${stepAmount} ${habit.unit}`}
                       >
                         -
                       </button>
-                      <span className="px-1.5 text-xs font-mono font-bold text-[var(--text-primary)] min-w-[50px] text-center">
+                      <span className="px-2 text-xs font-mono font-bold text-[var(--text-primary)] min-w-[50px] text-center">
                         {currentVal} {habit.unit}
                       </span>
                       <button
                         onClick={() => updateNumericValue(habit.id, todayStr, stepAmount, true)}
-                        className="w-7 h-7 rounded-[5px] flex items-center justify-center text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer"
+                        className="w-8 h-8 rounded-[6px] flex items-center justify-center text-sm font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-elevated)] transition-colors cursor-pointer touch-manipulation"
                         title={`Increase by ${stepAmount} ${habit.unit}`}
                       >
                         +
@@ -241,37 +242,39 @@ export const TodayHabitsCard: React.FC = () => {
                     </div>
                   )}
 
-                  {/* Reflection Note Button */}
-                  <button
-                    onClick={() => openReflectionModal(habit.id, todayStr)}
-                    style={{
-                      backgroundColor: checkin?.note || checkin?.mood ? 'var(--bg-surface-elevated)' : 'transparent',
-                      borderColor: checkin?.note || checkin?.mood ? 'var(--accent-primary)' : 'var(--border-subtle)',
-                      color: checkin?.note || checkin?.mood ? 'var(--text-primary)' : 'var(--text-muted)',
-                    }}
-                    className="h-8 px-2 rounded-lg border text-xs font-medium flex items-center gap-1 hover:border-[var(--border-medium)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
-                    title="Add daily reflection note & mood"
-                  >
-                    <span>{moodEmoji || '📝'}</span>
-                    <span className="hidden md:inline text-[11px]">
-                      {checkin?.note ? 'Note' : 'Reflect'}
-                    </span>
-                  </button>
+                  <div className="flex items-center gap-2 ml-auto sm:ml-0">
+                    {/* Reflection Note Button */}
+                    <button
+                      onClick={() => openReflectionModal(habit.id, todayStr)}
+                      style={{
+                        backgroundColor: checkin?.note || checkin?.mood ? 'var(--bg-surface-elevated)' : 'transparent',
+                        borderColor: checkin?.note || checkin?.mood ? 'var(--accent-primary)' : 'var(--border-subtle)',
+                        color: checkin?.note || checkin?.mood ? 'var(--text-primary)' : 'var(--text-muted)',
+                      }}
+                      className="h-8 px-2.5 rounded-lg border text-xs font-medium flex items-center gap-1 hover:border-[var(--border-medium)] hover:text-[var(--text-primary)] transition-colors cursor-pointer touch-manipulation"
+                      title="Add daily reflection note & mood"
+                    >
+                      <span>{moodEmoji || '📝'}</span>
+                      <span className="text-[11px]">
+                        {checkin?.note ? 'Note' : 'Reflect'}
+                      </span>
+                    </button>
 
-                  {/* Standard Check-in toggle */}
-                  <button
-                    onClick={() => toggleCheckin(habit.id, todayStr)}
-                    style={{
-                      backgroundColor: isChecked ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-surface-subtle)',
-                      borderColor: isChecked ? 'rgba(16, 185, 129, 0.35)' : 'var(--border-subtle)',
-                      color: isChecked ? '#10b981' : 'var(--text-primary)',
-                    }}
-                    className="h-8 px-3 rounded-lg border text-xs font-semibold flex items-center gap-1.5 hover:border-[var(--border-medium)] transition-all cursor-pointer active:scale-95"
-                    title={isChecked ? 'Mark as incomplete' : 'Mark complete for today'}
-                  >
-                    <Check size={12} strokeWidth={isChecked ? 3 : 2} />
-                    <span>{isChecked ? 'Completed' : 'Check In'}</span>
-                  </button>
+                    {/* Standard Check-in toggle */}
+                    <button
+                      onClick={() => toggleCheckin(habit.id, todayStr)}
+                      style={{
+                        backgroundColor: isChecked ? 'rgba(16, 185, 129, 0.12)' : 'var(--bg-surface-subtle)',
+                        borderColor: isChecked ? 'rgba(16, 185, 129, 0.35)' : 'var(--border-subtle)',
+                        color: isChecked ? '#10b981' : 'var(--text-primary)',
+                      }}
+                      className="h-8 px-3 rounded-lg border text-xs font-semibold flex items-center gap-1.5 hover:border-[var(--border-medium)] transition-all cursor-pointer active:scale-95 touch-manipulation"
+                      title={isChecked ? 'Mark as incomplete' : 'Mark complete for today'}
+                    >
+                      <Check size={12} strokeWidth={isChecked ? 3 : 2} />
+                      <span>{isChecked ? 'Completed' : 'Check In'}</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             );

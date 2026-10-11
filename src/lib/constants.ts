@@ -32,7 +32,7 @@ export const RING_COLORS = {
 } as const;
 
 export const HABIT_CATEGORIES = [
-  { id: 'all', label: 'All Routines', icon: 'Sparkles', color: '#6366f1' },
+  { id: 'all', label: 'All Routines', icon: 'LayoutGrid', color: '#6366f1' },
   { id: 'health', label: 'Health & Fitness', icon: 'Activity', color: '#10b981' },
   { id: 'mind', label: 'Mind & Growth', icon: 'Brain', color: '#8b5cf6' },
   { id: 'work', label: 'Deep Work & Career', icon: 'Briefcase', color: '#3b82f6' },

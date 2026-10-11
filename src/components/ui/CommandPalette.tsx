@@ -13,7 +13,6 @@ import {
   Edit,
   ArrowRight,
   Zap,
-  Sparkles,
   User,
   BookOpen,
 } from 'lucide-react';
@@ -397,24 +396,6 @@ export const CommandPalette: React.FC = () => {
               </kbd>{' '}
               Select
             </span>
-            <span className="flex items-center gap-1">
-              <kbd
-                style={{
-                  backgroundColor: 'var(--bg-surface-elevated)',
-                  borderColor: 'var(--border-subtle)',
-                  color: 'var(--text-primary)',
-                }}
-                className="font-mono px-1 py-0.2 rounded text-[10px] border"
-              >
-                Esc
-              </kbd>{' '}
-              Close
-            </span>
-          </div>
-
-          <div style={{ color: 'var(--text-secondary)' }} className="flex items-center gap-1">
-            <Sparkles size={12} style={{ color: 'var(--accent-primary)' }} />
-            <span>Quick Omnibar</span>
           </div>
         </div>
       </div>

@@ -126,17 +126,17 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
             backgroundColor: 'var(--bg-surface-elevated)',
             borderColor: 'var(--border-subtle)',
           }}
-          className="relative flex items-center p-0.5 rounded-[5px] border"
+          className="relative flex items-center p-0.5 rounded-lg border"
         >
           {/* Previous Month Chevron */}
           <button
             onClick={prevMonth}
             style={{ color: 'var(--text-secondary)' }}
-            className="w-7 h-7 flex items-center justify-center hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-[4px] transition-colors cursor-pointer"
+            className="w-8 h-8 sm:w-7 sm:h-7 flex items-center justify-center hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-md transition-colors cursor-pointer touch-manipulation"
             title="Previous month"
             aria-label="Previous month"
           >
-            <ChevronLeft size={14} />
+            <ChevronLeft size={16} />
           </button>
 
           {/* Custom Studio Month Selector */}
@@ -150,12 +150,12 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
                 backgroundColor: monthMenuOpen ? 'var(--bg-surface-hover)' : 'transparent',
                 color: 'var(--text-primary)',
               }}
-              className="flex items-center gap-1 text-[13px] font-semibold px-2 py-1 rounded-[4px] hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer"
+              className="flex items-center gap-1.5 text-[13px] font-semibold px-2.5 py-1.5 sm:py-1 rounded-md hover:bg-[var(--bg-surface-hover)] transition-colors cursor-pointer touch-manipulation"
               title="Select Month"
             >
               <span>{MONTH_NAMES[selectedMonth]}</span>
               <ChevronDown
-                size={11}
+                size={12}
                 className={`text-[var(--text-muted)] transition-transform duration-150 ${
                   monthMenuOpen ? 'rotate-180 text-[var(--accent-primary)]' : ''
                 }`}
@@ -208,12 +208,12 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
                 backgroundColor: yearMenuOpen ? 'var(--bg-surface-hover)' : 'transparent',
                 color: 'var(--text-secondary)',
               }}
-              className="flex items-center gap-1 text-[13px] font-medium font-num px-2 py-1 rounded-[4px] hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+              className="flex items-center gap-1 text-[13px] font-medium font-num px-2.5 py-1.5 sm:py-1 rounded-md hover:bg-[var(--bg-surface-hover)] hover:text-[var(--text-primary)] transition-colors cursor-pointer touch-manipulation"
               title="Select Year"
             >
               <span>{selectedYear}</span>
               <ChevronDown
-                size={11}
+                size={12}
                 className={`text-[var(--text-muted)] transition-transform duration-150 ${
                   yearMenuOpen ? 'rotate-180 text-[var(--accent-primary)]' : ''
                 }`}
@@ -259,11 +259,11 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
           <button
             onClick={nextMonth}
             style={{ color: 'var(--text-secondary)' }}
-            className="w-7 h-7 flex items-center justify-center hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-[4px] transition-colors cursor-pointer"
+            className="w-8 h-8 sm:w-7 sm:h-7 flex items-center justify-center hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-md transition-colors cursor-pointer touch-manipulation"
             title="Next month"
             aria-label="Next month"
           >
-            <ChevronRight size={14} />
+            <ChevronRight size={16} />
           </button>
         </div>
 
@@ -275,7 +275,7 @@ export const Header: React.FC<HeaderProps> = ({ title }) => {
             borderColor: isCurrentMonthView ? 'var(--border-subtle)' : 'var(--accent-primary)',
             color: isCurrentMonthView ? 'var(--text-secondary)' : 'var(--text-primary)',
           }}
-          className="h-8 px-3 rounded-[5px] text-[12px] font-semibold flex items-center gap-1.5 transition-all border cursor-pointer hover:bg-[var(--bg-surface-hover)]"
+          className="h-8 sm:h-8 px-3 rounded-lg text-[12px] font-semibold flex items-center gap-1.5 transition-all border cursor-pointer hover:bg-[var(--bg-surface-hover)] touch-manipulation active:scale-95"
           title="Jump to Today (T)"
         >
           <span

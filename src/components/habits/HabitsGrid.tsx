@@ -99,7 +99,8 @@ export const HabitsGrid: React.FC = () => {
       const todayCol = document.getElementById('grid-today-col');
 
       if (container && todayCol) {
-        const stickyWidth = 280;
+        const stickyWidth =
+          container.querySelector<HTMLElement>('.habits-grid-habit-column')?.offsetWidth ?? 280;
         const colRect = todayCol.getBoundingClientRect();
         const containerRect = container.getBoundingClientRect();
         const currentScrollLeft = container.scrollLeft;
@@ -297,28 +298,27 @@ export const HabitsGrid: React.FC = () => {
 
   return (
     <>
-      <Card className="w-full flex-1 min-h-0 flex flex-col overflow-hidden !p-0 border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
+      <Card className="daily-habits-card w-full flex-1 min-h-0 flex flex-col overflow-hidden !p-0 border border-[var(--border-subtle)] bg-[var(--bg-surface)]">
       {/* ── TOP TOOLBAR: VIEW TOGGLE, WEEK PICKER & QUICK FILTERS ── */}
-      <div className="flex-shrink-0 px-3 py-1.5 sm:px-3.5 sm:py-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] flex flex-wrap items-center justify-between gap-2">
+      <div className="habits-grid-toolbar flex-shrink-0 px-3 py-1.5 sm:px-3.5 sm:py-2 border-b border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] flex flex-wrap items-center justify-between gap-2">
         {/* Left: View Mode Switcher */}
-        <div className="flex items-center gap-2">
+        <div className="habits-grid-toolbar-main flex items-center gap-2">
           <div
             style={{ backgroundColor: 'var(--bg-surface)' }}
-            className="p-0.5 rounded-[5px] border border-[var(--border-subtle)] inline-flex items-center"
+            className="habits-grid-view-control p-0.5 rounded-[6px] border border-[var(--border-subtle)] inline-flex items-center"
           >
             <button
               type="button"
               onClick={() => setViewMode('week')}
-              style={{
-                backgroundColor: viewMode === 'week' ? 'var(--accent-primary)' : 'transparent',
-                color: viewMode === 'week' ? '#ffffff' : 'var(--text-secondary)',
-              }}
-              className="h-7 px-3 rounded-[5px] text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+              className={`habits-grid-view-button h-7 px-3 rounded-[5px] text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'week' ? 'is-active' : ''
+              }`}
             >
               <Zap size={13} strokeWidth={2.4} />
-              <span>Weekly Focus</span>
+              <span className="habits-grid-view-label">Weekly Focus</span>
+              <span className="habits-grid-view-label-short">Week</span>
               {viewMode === 'week' && (
-                <span className="text-[10px] bg-white/20 px-1 py-0.2 rounded font-mono">
+                <span className="habits-grid-view-badge text-[10px] px-1 py-0.2 rounded font-mono">
                   7-Day
                 </span>
               )}
@@ -327,16 +327,15 @@ export const HabitsGrid: React.FC = () => {
             <button
               type="button"
               onClick={() => setViewMode('month')}
-              style={{
-                backgroundColor: viewMode === 'month' ? 'var(--accent-primary)' : 'transparent',
-                color: viewMode === 'month' ? '#ffffff' : 'var(--text-secondary)',
-              }}
-              className="h-7 px-3 rounded-[5px] text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
+              className={`habits-grid-view-button h-7 px-3 rounded-[5px] text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                viewMode === 'month' ? 'is-active' : ''
+              }`}
             >
               <Calendar size={13} strokeWidth={2.2} />
-              <span>Month Matrix</span>
+              <span className="habits-grid-view-label">Month Matrix</span>
+              <span className="habits-grid-view-label-short">Month</span>
               {viewMode === 'month' && (
-                <span className="text-[10px] bg-white/20 px-1 py-0.2 rounded font-mono">
+                <span className="habits-grid-view-badge text-[10px] px-1 py-0.2 rounded font-mono">
                   {allMonthDays.length}d
                 </span>
               )}
@@ -387,11 +386,15 @@ export const HabitsGrid: React.FC = () => {
         </div>
 
         {/* Right: Week Navigator (in Week mode) & Check All Today */}
-        <div className="flex items-center gap-2">
+        <div
+          className={`habits-grid-toolbar-actions flex items-center gap-2 ${
+            viewMode === 'month' ? 'habits-grid-toolbar-actions--month' : ''
+          }`}
+        >
           {viewMode === 'week' && weeks.length > 0 && (
             <div
               style={{ backgroundColor: 'var(--bg-surface)' }}
-              className="flex items-center p-0.5 rounded-[5px] border border-[var(--border-subtle)] text-xs"
+              className="habits-grid-week-picker flex items-center p-0.5 rounded-[5px] border border-[var(--border-subtle)] text-xs"
             >
               <button
                 type="button"
@@ -403,7 +406,7 @@ export const HabitsGrid: React.FC = () => {
                 <ChevronLeft size={13} />
               </button>
 
-              <div className="flex items-center gap-1 px-1.5">
+              <div className="habits-grid-week-list flex items-center gap-1 px-1.5">
                 {weeks.map((w, wIdx) => {
                   const isCur = wIdx === activeWeekIndex;
                   const hasToday = w.days.some((d) => d.isToday);
@@ -421,7 +424,7 @@ export const HabitsGrid: React.FC = () => {
                           ? 'var(--accent-primary)'
                           : 'var(--text-muted)',
                       }}
-                      className="h-6 px-2 rounded-[5px] border text-[11px] font-semibold transition-all cursor-pointer hover:text-[var(--text-primary)]"
+                      className={`habits-grid-week-button h-6 px-2 rounded-[5px] border text-[11px] font-semibold transition-all cursor-pointer hover:text-[var(--text-primary)] ${isCur ? 'is-active' : ''}`}
                     >
                       {w.label}
                       {hasToday && (
@@ -446,22 +449,26 @@ export const HabitsGrid: React.FC = () => {
             </div>
           )}
 
-          {totalScheduledToday > 0 && totalDoneToday < totalScheduledToday && (
-            <button
-              type="button"
-              onClick={handleCompleteAllToday}
-              style={{
-                backgroundColor: 'var(--bg-surface)',
-                borderColor: 'var(--border-subtle)',
-                color: 'var(--status-success)',
-              }}
-              className="h-7.5 px-3 rounded-[5px] border text-xs font-semibold flex items-center gap-1.5 hover:border-[var(--status-success)]/40 hover:bg-[var(--status-success)]/10 transition-colors cursor-pointer"
-              title="Mark all scheduled habits for today as completed"
-            >
-              <CheckCheck size={13} strokeWidth={2.5} />
-              <span className="hidden sm:inline">Check All Today</span>
-              <span className="sm:hidden">All Today</span>
-            </button>
+          {totalScheduledToday > 0 && (
+            <div className="habits-grid-today-actions flex items-center gap-1.5">
+              <span
+                className="habits-grid-today-progress rounded-full px-2.5 py-0.5 text-[11px] font-semibold font-num border border-white/10 bg-zinc-900/60 text-zinc-300"
+              >
+                {totalDoneToday}/{totalScheduledToday} today
+              </span>
+              {totalDoneToday < totalScheduledToday && (
+                <button
+                  type="button"
+                  onClick={handleCompleteAllToday}
+                  className="habits-grid-complete-all h-7 px-2.5 rounded-[5px] border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 text-xs font-semibold flex items-center gap-1.5 hover:bg-emerald-500/15 transition-colors cursor-pointer active:scale-95"
+                  title="Mark all scheduled habits for today as completed"
+                >
+                  <CheckCheck size={13} strokeWidth={2.4} />
+                  <span className="hidden sm:inline">Check All Today</span>
+                  <span className="sm:hidden">All Today</span>
+                </button>
+              )}
+            </div>
           )}
         </div>
       </div>
@@ -469,12 +476,10 @@ export const HabitsGrid: React.FC = () => {
       {/* ── MAIN TABLE CONTAINER ── */}
       <div
         ref={gridContainerRef}
-        className={`w-full flex-1 min-h-0 relative outline-none overflow-y-auto custom-scrollbar ${
-          viewMode === 'month' ? 'overflow-x-auto' : 'overflow-x-hidden'
-        }`}
+        className="habits-grid-scroll w-full flex-1 min-h-0 relative outline-none overflow-x-auto overflow-y-auto custom-scrollbar"
         tabIndex={0}
       >
-        <table className={`w-full border-collapse text-left select-none ${viewMode === 'month' ? 'min-w-max' : ''}`}>
+        <table className={`habits-grid-table habits-grid-table--${viewMode} w-full border-collapse text-left select-none ${viewMode === 'month' ? 'min-w-max' : ''}`}>
           {/* HEADER */}
           <thead className="sticky top-0 z-30 shadow-[0_1px_3px_rgba(0,0,0,0.25)]">
             {/* Header Tier 1: In Month Mode, show Week Group Headers */}
@@ -491,9 +496,9 @@ export const HabitsGrid: React.FC = () => {
                 <th
                   style={{
                     backgroundColor: 'var(--bg-surface-elevated)',
-                    boxShadow: '4px 0 16px -2px rgba(0, 0, 0, 0.45)',
+                    boxShadow: 'var(--sticky-col-shadow, 4px 0 16px -2px rgba(0, 0, 0, 0.45))',
                   }}
-                  className="sticky left-0 z-40 px-3.5 py-2 w-[280px] min-w-[280px] max-w-[280px] border-r border-[var(--border-subtle)]"
+                  className="habits-grid-habit-column sticky left-0 z-40 px-3.5 py-2 w-[280px] min-w-[280px] max-w-[280px] border-r border-[var(--border-subtle)]"
                 >
                   <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
                     HABIT OVERVIEW
@@ -527,13 +532,13 @@ export const HabitsGrid: React.FC = () => {
                     borderColor: 'var(--border-subtle)',
                     backgroundColor: 'var(--bg-surface-elevated)',
                   }}
-                  className="px-3 py-1.5 text-center border-l border-[var(--border-subtle)] text-[10px] font-bold text-[var(--text-muted)]"
+                  className="habits-grid-summary-column px-3 py-1.5 text-center border-l border-[var(--border-subtle)] text-[10px] font-bold text-[var(--text-muted)]"
                 >
                   MONTH STATS
                 </th>
                 <th
                   style={{ backgroundColor: 'var(--bg-surface-elevated)' }}
-                  className="w-[45px] px-2 py-1.5"
+                  className="habits-grid-row-actions w-[45px] px-2 py-1.5"
                 ></th>
               </tr>
             )}
@@ -551,15 +556,15 @@ export const HabitsGrid: React.FC = () => {
               <th
                 style={{
                   backgroundColor: 'var(--bg-surface-elevated)',
-                  boxShadow: '4px 0 16px -2px rgba(0, 0, 0, 0.45)',
+                  boxShadow: 'var(--sticky-col-shadow, 4px 0 16px -2px rgba(0, 0, 0, 0.45))',
                 }}
-                className="sticky left-0 z-40 px-3.5 py-1.5 w-[280px] min-w-[280px] max-w-[280px] border-r border-[var(--border-subtle)]"
+                className="habits-grid-habit-column sticky left-0 z-40 px-3.5 py-1.5 w-[280px] min-w-[280px] max-w-[280px] border-r border-[var(--border-subtle)]"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-[var(--text-primary)]">
                     HABIT & TARGET
                   </span>
-                  <span className="text-[10px] font-mono text-[var(--text-dim)] font-normal">
+                  <span className="habits-grid-habit-count text-[10px] font-mono text-[var(--text-dim)] font-normal">
                     {activeHabits.length} habits
                   </span>
                 </div>
@@ -581,7 +586,7 @@ export const HabitsGrid: React.FC = () => {
                         : 'var(--bg-surface-elevated)',
                       borderColor: 'var(--border-subtle)',
                     }}
-                    className={`px-1 py-1.5 text-center transition-colors ${
+                    className={`habits-grid-day-column px-1 py-1.5 text-center transition-colors ${
                       isFirstInWeek ? 'border-l border-[var(--border-medium)]' : ''
                     } ${isToday ? 'border-x border-violet-500/35' : ''}`}
                   >
@@ -607,7 +612,7 @@ export const HabitsGrid: React.FC = () => {
                         {day.dayOfMonth}
                       </div>
                       {isToday && (
-                        <span className="text-[8px] font-bold uppercase tracking-wider text-[var(--accent-primary)] mt-0.5 font-mono">
+                        <span className="habits-grid-today-label text-[8px] font-bold uppercase tracking-wider text-[var(--accent-primary)] mt-0.5 font-mono">
                           Today
                         </span>
                       )}
@@ -623,7 +628,7 @@ export const HabitsGrid: React.FC = () => {
                   borderColor: 'var(--border-subtle)',
                   backgroundColor: 'var(--bg-surface-elevated)',
                 }}
-                className="px-2 py-1.5 text-center w-[50px] border-l border-[var(--border-subtle)] text-[10px]"
+                className="habits-grid-summary-column px-2 py-1.5 text-center w-[50px] border-l border-[var(--border-subtle)] text-[10px]"
               >
                 DONE
               </th>
@@ -632,7 +637,7 @@ export const HabitsGrid: React.FC = () => {
                   color: 'var(--text-muted)',
                   backgroundColor: 'var(--bg-surface-elevated)',
                 }}
-                className="px-2 py-1.5 text-center w-[50px] text-[10px]"
+                className="habits-grid-summary-column px-2 py-1.5 text-center w-[50px] text-[10px]"
               >
                 LEFT
               </th>
@@ -641,13 +646,13 @@ export const HabitsGrid: React.FC = () => {
                   color: 'var(--text-muted)',
                   backgroundColor: 'var(--bg-surface-elevated)',
                 }}
-                className={`px-3 py-1.5 ${viewMode === 'week' ? 'w-[110px]' : 'min-w-[130px]'} text-left text-[10px]`}
+                className={`habits-grid-summary-column px-3 py-1.5 ${viewMode === 'week' ? 'w-[110px]' : 'min-w-[130px]'} text-left text-[10px]`}
               >
                 PROGRESS
               </th>
               <th
                 style={{ backgroundColor: 'var(--bg-surface-elevated)' }}
-                className="w-[36px] px-1 py-1.5"
+                className="habits-grid-row-actions w-[36px] px-1 py-1.5"
               ></th>
             </tr>
           </thead>
@@ -689,14 +694,14 @@ export const HabitsGrid: React.FC = () => {
                   <td
                     style={{
                       backgroundColor: 'var(--bg-surface)',
-                      boxShadow: '4px 0 16px -2px rgba(0, 0, 0, 0.45)',
+                      boxShadow: 'var(--sticky-col-shadow, 4px 0 16px -2px rgba(0, 0, 0, 0.45))',
                     }}
-                    className={`sticky left-0 z-20 group-hover:bg-[var(--bg-surface-hover)] px-3.5 ${rowPaddingClass} w-[280px] min-w-[280px] max-w-[280px] border-r border-[var(--border-subtle)]`}
+                    className={`habits-grid-habit-column sticky left-0 z-20 group-hover:bg-[var(--bg-surface-hover)] px-3.5 ${rowPaddingClass} w-[280px] min-w-[280px] max-w-[280px] border-r border-[var(--border-subtle)]`}
                   >
                     <div className="flex items-center gap-2.5">
                       <button
                         style={{ color: 'var(--text-muted)' }}
-                        className="cursor-grab active:cursor-grabbing hover:text-[var(--text-primary)] p-0.5 flex-shrink-0"
+                        className="habits-grid-drag cursor-grab active:cursor-grabbing hover:text-[var(--text-primary)] p-0.5 flex-shrink-0"
                         title="Drag to reorder"
                       >
                         <GripVertical size={13} />
@@ -708,7 +713,7 @@ export const HabitsGrid: React.FC = () => {
                           backgroundColor: `${habit.color}1c`,
                           borderColor: `${habit.color}45`,
                         }}
-                        className="w-7.5 h-7.5 rounded-[5px] border flex items-center justify-center flex-shrink-0 shadow-sm"
+                        className="habits-grid-habit-icon w-7.5 h-7.5 rounded-[5px] border flex items-center justify-center flex-shrink-0 shadow-sm"
                       >
                         <HabitIconView iconId={habit.emoji} color={habit.color} size={15} />
                       </div>
@@ -761,7 +766,7 @@ export const HabitsGrid: React.FC = () => {
                               backgroundColor: 'var(--bg-surface-elevated)',
                               borderColor: 'var(--border-subtle)',
                             }}
-                            className="flex items-center rounded-[5px] border p-0.5 flex-shrink-0 select-none group/stepper hover:border-[var(--border-medium)] transition-colors"
+                            className="habits-grid-target flex items-center rounded-[5px] border p-0.5 flex-shrink-0 select-none group/stepper hover:border-[var(--border-medium)] transition-colors"
                           >
                             <button
                               type="button"
@@ -798,7 +803,7 @@ export const HabitsGrid: React.FC = () => {
                         </div>
 
                         {/* Badges Row */}
-                        <div className="flex items-center gap-1.5 mt-1 text-[10px]">
+                        <div className="habits-grid-badges flex items-center gap-1.5 mt-1 text-[10px]">
                           {streak > 0 ? (
                             <span
                               style={{
@@ -864,7 +869,7 @@ export const HabitsGrid: React.FC = () => {
                           minWidth: viewMode === 'week' ? undefined : '38px',
                           backgroundColor: isToday ? 'rgba(124, 58, 237, 0.05)' : undefined,
                         }}
-                        className={`text-center px-1 ${rowPaddingClass} ${
+                        className={`habits-grid-day-column text-center px-1 ${rowPaddingClass} ${
                           isFirstInWeek ? 'border-l border-[var(--border-medium)]' : ''
                         } ${isToday ? 'border-x border-violet-500/25' : ''} ${
                           isCellFocused ? 'ring-1 ring-inset ring-[var(--accent-primary)]' : ''
@@ -904,7 +909,7 @@ export const HabitsGrid: React.FC = () => {
                       color: 'var(--text-primary)',
                       borderColor: 'var(--border-subtle)',
                     }}
-                    className={`px-3 ${rowPaddingClass} text-center font-num font-bold text-[13px] border-l border-[var(--border-subtle)]`}
+                    className={`habits-grid-summary-column px-3 ${rowPaddingClass} text-center font-num font-bold text-[13px] border-l border-[var(--border-subtle)]`}
                   >
                     {completedInMonth}
                   </td>
@@ -912,13 +917,13 @@ export const HabitsGrid: React.FC = () => {
                   {/* Overall Month Left */}
                   <td
                     style={{ color: 'var(--text-muted)' }}
-                    className={`px-3 ${rowPaddingClass} text-center font-num font-medium text-[13px]`}
+                    className={`habits-grid-summary-column px-3 ${rowPaddingClass} text-center font-num font-medium text-[13px]`}
                   >
                     {leftInMonth}
                   </td>
 
                   {/* Overall Progress Bar */}
-                  <td className={`px-3.5 ${rowPaddingClass} min-w-[130px]`}>
+                  <td className={`habits-grid-summary-column px-3.5 ${rowPaddingClass} min-w-[130px]`}>
                     <div className="flex flex-col gap-1">
                       <div className="flex items-center justify-between text-[11px]">
                         <span
@@ -939,7 +944,7 @@ export const HabitsGrid: React.FC = () => {
                   </td>
 
                   {/* Row Actions */}
-                  <td className={`px-2 ${rowPaddingClass} text-right relative`}>
+                  <td className={`habits-grid-row-actions px-2 ${rowPaddingClass} text-right relative`}>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         type="button"
@@ -1029,12 +1034,15 @@ export const HabitsGrid: React.FC = () => {
                   backgroundColor: 'var(--bg-surface-elevated)',
                   boxShadow: '4px 0 16px -2px rgba(0, 0, 0, 0.45)',
                 }}
-                className="sticky left-0 z-40 px-3.5 py-1.5 w-[280px] min-w-[280px] max-w-[280px] border-r border-[var(--border-subtle)]"
+                className="habits-grid-habit-column sticky left-0 z-40 px-3.5 py-1.5 w-[280px] min-w-[280px] max-w-[280px] border-r border-[var(--border-subtle)]"
               >
                 <div className="flex items-center gap-1.5">
                   <Sparkles size={12} className="text-amber-400" />
-                  <span className="font-bold text-[11px] uppercase tracking-wider text-[var(--text-primary)]">
+                  <span className="habits-grid-footer-label font-bold text-[11px] uppercase tracking-wider text-[var(--text-primary)]">
                     Daily Completion
+                  </span>
+                  <span className="habits-grid-footer-label-short font-bold text-[11px] uppercase tracking-wider text-[var(--text-primary)]">
+                    Done
                   </span>
                 </div>
               </td>
@@ -1066,7 +1074,7 @@ export const HabitsGrid: React.FC = () => {
                       minWidth: viewMode === 'week' ? undefined : '38px',
                       backgroundColor: isToday ? 'rgba(124, 58, 237, 0.14)' : 'var(--bg-surface-elevated)',
                     }}
-                    className={`px-1 py-1.5 text-center ${
+                    className={`habits-grid-day-column px-1 py-1.5 text-center ${
                       isFirstInWeek ? 'border-l border-[var(--border-medium)]' : ''
                     } ${isToday ? 'border-x border-violet-500/30' : ''}`}
                   >
@@ -1110,26 +1118,21 @@ export const HabitsGrid: React.FC = () => {
                 );
               })}
 
-              <td colSpan={4} style={{ backgroundColor: 'var(--bg-surface-elevated)' }}></td>
+              <td colSpan={4} className="habits-grid-summary-column" style={{ backgroundColor: 'var(--bg-surface-elevated)' }}></td>
             </tr>
           </tfoot>
         </table>
       </div>
 
       {/* ── INLINE BOTTOM ACTION BAR: + ADD HABIT & QUICK PRESET CHIPS ── */}
-      <div className="flex-shrink-0 px-3 py-1.5 border-t border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] flex flex-wrap items-center justify-between gap-2.5">
-        <div className="flex items-center gap-2">
+      <div className="habits-grid-add-bar flex-shrink-0 px-3 py-1.5 border-t border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] flex flex-wrap items-center justify-between gap-2">
+        <div className="habits-grid-add-action-wrap flex items-center gap-2">
           <button
             type="button"
             onClick={() => openHabitModal()}
-            style={{
-              backgroundColor: 'var(--btn-primary-bg)',
-              color: 'var(--btn-primary-text)',
-              boxShadow: 'var(--btn-primary-shadow)',
-            }}
-            className="h-7.5 px-3 rounded-[5px] text-xs font-bold hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-1.5"
+            className="habits-grid-add-button h-7 px-3 rounded-[5px] text-xs font-semibold bg-white text-zinc-950 hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
           >
-            <Plus size={13} strokeWidth={2.5} />
+            <Plus size={13} strokeWidth={2.4} />
             <span>Add New Habit</span>
           </button>
 
@@ -1139,18 +1142,22 @@ export const HabitsGrid: React.FC = () => {
         </div>
 
         {/* 1-Click Quick Preset Chips */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        <div className="habits-grid-presets flex items-center gap-1.5 overflow-x-auto scrollbar-none">
+          <button
+            type="button"
+            onClick={() => openHabitModal()}
+            className="habits-grid-preset habits-grid-preset--custom h-6.5 px-2.5 rounded-[5px] border border-white/10 bg-white/10 text-white text-[11px] font-semibold hover:bg-white/15 transition-colors cursor-pointer flex items-center gap-1 whitespace-nowrap flex-shrink-0"
+            title="Create Custom Habit"
+          >
+            <Plus size={11} strokeWidth={2.4} />
+            <span>New Habit</span>
+          </button>
           {QUICK_PRESETS.map((preset) => (
             <button
               key={preset.name}
               type="button"
               onClick={() => handleAddPresetHabit(preset)}
-              style={{
-                backgroundColor: 'var(--bg-surface)',
-                borderColor: 'var(--border-subtle)',
-                color: 'var(--text-secondary)',
-              }}
-              className="h-6.5 px-2 rounded-[5px] border text-[11px] font-medium hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] transition-colors cursor-pointer flex items-center gap-1"
+              className="habits-grid-preset h-6.5 px-2.5 rounded-[5px] border border-white/5 bg-zinc-900/60 text-zinc-400 text-[11px] font-medium hover:text-zinc-200 hover:border-white/15 transition-colors cursor-pointer flex items-center gap-1 whitespace-nowrap flex-shrink-0"
               title={`⚡ 1-Click add "${preset.name}"`}
             >
               <Plus size={10} style={{ color: preset.color }} />

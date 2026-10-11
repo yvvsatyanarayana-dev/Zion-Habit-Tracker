@@ -31,6 +31,7 @@ export const RegisterPage: React.FC = () => {
 
   const [name, setName] = useState('');
   const [username, setUsername] = useState('');
+  const [usernameTouched, setUsernameTouched] = useState(false);
   const [email, setEmail] = useState('');
   const [bio, setBio] = useState('Small daily habits compound into massive achievements.');
   const [avatarColor, setAvatarColor] = useState(AVATAR_COLORS[0]);
@@ -165,9 +166,10 @@ export const RegisterPage: React.FC = () => {
                     required
                     value={name}
                     onChange={(e) => {
-                      setName(e.target.value);
-                      if (!username && e.target.value) {
-                        setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, ''));
+                      const newName = e.target.value;
+                      setName(newName);
+                      if (!usernameTouched) {
+                        setUsername(newName.toLowerCase().replace(/\s+/g, '').replace(/[^a-z0-9_]/g, ''));
                       }
                     }}
                     placeholder="e.g. Alex Morgan"
@@ -191,7 +193,11 @@ export const RegisterPage: React.FC = () => {
                     type="text"
                     required
                     value={username}
-                    onChange={(e) => setUsername(e.target.value.replace(/\s+/g, '').toLowerCase())}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\s+/g, '').toLowerCase().replace(/[^a-z0-9_]/g, '');
+                      setUsername(val);
+                      setUsernameTouched(val.length > 0);
+                    }}
                     placeholder="e.g. alex"
                     style={{
                       backgroundColor: 'var(--bg-surface)',

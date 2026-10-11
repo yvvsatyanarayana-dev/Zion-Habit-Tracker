@@ -153,12 +153,14 @@ export const App: React.FC = () => {
   }
 
   // 3. Main App with User Profile Page
+  const isAndroid = isAndroidApp();
+
   return (
     <div
       style={{ backgroundColor: 'var(--bg-canvas)', color: 'var(--text-primary)' }}
       className={`mobile-app h-screen w-screen flex flex-col select-none overflow-hidden ${
         reduceMotion ? 'reduce-motion' : ''
-      }`}
+      } ${isAndroid ? 'is-android' : ''}`}
     >
       <MobileHeader />
       {/* Frameless Custom Title Bar */}
