@@ -19,10 +19,15 @@ import {
   LayoutGrid,
   FolderOpen,
   Monitor,
+  RefreshCw,
+  ExternalLink,
+  CheckCircle2,
 } from 'lucide-react';
 import type { WeekStartDay, ClockFormat, DensityMode } from '../lib/types';
 import { exportCSVHistory, exportCSVMatrix, exportJSONBackup } from '../lib/exportUtils';
 import { sound } from '../lib/audio';
+import { APP_VERSION, GITHUB_RELEASES_URL } from '../lib/constants';
+import { checkGitHubUpdate, UpdateInfo } from '../lib/updaterService';
 import {
   isAndroidApp,
   showAndroidTestReminder,
@@ -41,6 +46,9 @@ export const SettingsPage: React.FC = () => {
 
   const [notificationStatus, setNotificationStatus] = useState<string>('');
   const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateResult, setUpdateResult] = useState<UpdateInfo | null>(null);
+  const [updateError, setUpdateError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentTheme = settings.theme || 'dark';
@@ -777,6 +785,145 @@ export const SettingsPage: React.FC = () => {
                 Permanently clear database
               </span>
             </button>
+          </div>
+        </Card>
+
+        {/* App Version & Updates (100% Free GitHub Releases) */}
+        <Card className="!p-6 space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div
+                style={{
+                  backgroundColor: 'rgba(99, 102, 241, 0.12)',
+                  color: 'var(--accent-primary)',
+                }}
+                className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
+              >
+                <Sparkles size={20} />
+              </div>
+              <div>
+                <h3
+                  style={{ color: 'var(--text-primary)' }}
+                  className="text-base font-bold flex items-center gap-2"
+                >
+                  <span>App Version & Updates</span>
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-[var(--bg-surface-subtle)] text-[var(--accent-primary)] font-bold border border-[var(--border-subtle)]">
+                    v{APP_VERSION}
+                  </span>
+                </h3>
+                <p style={{ color: 'var(--text-secondary)' }} className="text-xs mt-0.5">
+                  100% Free GitHub-hosted releases & automatic update checks
+                </p>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              disabled={checkingUpdate}
+              onClick={async () => {
+                setCheckingUpdate(true);
+                setUpdateError(null);
+                try {
+                  const info = await checkGitHubUpdate();
+                  setUpdateResult(info);
+                } catch {
+                  setUpdateError('Could not reach GitHub Releases. Please check your internet connection.');
+                } finally {
+                  setCheckingUpdate(false);
+                }
+              }}
+              style={{
+                backgroundColor: 'var(--bg-surface-elevated)',
+                borderColor: 'var(--border-subtle)',
+                color: 'var(--text-primary)',
+              }}
+              className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold border hover:border-[var(--border-medium)] hover:bg-[var(--bg-surface-hover)] transition-all cursor-pointer disabled:opacity-50 flex-shrink-0"
+            >
+              <RefreshCw size={13} className={checkingUpdate ? 'animate-spin text-[var(--accent-primary)]' : ''} />
+              <span>{checkingUpdate ? 'Checking GitHub...' : 'Check for Updates'}</span>
+            </button>
+          </div>
+
+          {updateResult && (
+            <div
+              style={{
+                backgroundColor: updateResult.hasUpdate
+                  ? 'rgba(99, 102, 241, 0.08)'
+                  : 'rgba(16, 185, 129, 0.08)',
+                borderColor: updateResult.hasUpdate
+                  ? 'rgba(99, 102, 241, 0.25)'
+                  : 'rgba(16, 185, 129, 0.25)',
+              }}
+              className="p-3.5 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+            >
+              <div className="flex items-center gap-2.5">
+                {updateResult.hasUpdate ? (
+                  <Sparkles size={16} className="text-[var(--accent-primary)] flex-shrink-0" />
+                ) : (
+                  <CheckCircle2 size={16} className="text-emerald-400 flex-shrink-0" />
+                )}
+                <div>
+                  <span
+                    style={{ color: 'var(--text-primary)' }}
+                    className="font-bold text-xs"
+                  >
+                    {updateResult.hasUpdate
+                      ? `New Version Available: v${updateResult.latestVersion}`
+                      : 'You are on the latest version!'}
+                  </span>
+                  <p style={{ color: 'var(--text-secondary)' }} className="text-[11px] mt-0.5">
+                    {updateResult.hasUpdate
+                      ? updateResult.releaseTitle || 'Ready to download from GitHub'
+                      : 'Zion is fully up to date.'}
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {updateResult.hasUpdate && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (updateResult.downloadUrl) window.open(updateResult.downloadUrl, '_blank');
+                    }}
+                    style={{ backgroundColor: 'var(--accent-primary)', color: '#ffffff' }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold hover:brightness-110 cursor-pointer"
+                  >
+                    <Download size={13} />
+                    <span>Download</span>
+                  </button>
+                )}
+                <a
+                  href={GITHUB_RELEASES_URL}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{ color: 'var(--text-muted)' }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] transition-colors"
+                >
+                  <span>Releases</span>
+                  <ExternalLink size={11} />
+                </a>
+              </div>
+            </div>
+          )}
+
+          {updateError && (
+            <p className="text-xs text-rose-400 bg-rose-500/10 border border-rose-500/20 p-2.5 rounded-lg">
+              {updateError}
+            </p>
+          )}
+
+          <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px] text-[var(--text-dim)]">
+            <span>Repository: github.com/yvvsatyanarayana-dev/Zion-Habit-Tracker</span>
+            <a
+              href={GITHUB_RELEASES_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="hover:text-[var(--accent-primary)] hover:underline flex items-center gap-1"
+            >
+              <span>View GitHub Releases</span>
+              <ExternalLink size={10} />
+            </a>
           </div>
         </Card>
       </div>

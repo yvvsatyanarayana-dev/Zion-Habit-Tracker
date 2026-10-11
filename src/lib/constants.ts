@@ -53,3 +53,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   theme: 'dark',
   sound_enabled: true,
 };
+
+export const APP_VERSION = '1.0.0';
+export const GITHUB_REPO_OWNER = 'yvvsatyanarayana-dev';
+export const GITHUB_REPO_NAME = 'Zion-Habit-Tracker';
+export const GITHUB_RELEASES_URL = `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases`;
+export const GITHUB_API_LATEST_RELEASE = `https://api.github.com/repos/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases/latest`;

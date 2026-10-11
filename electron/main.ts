@@ -238,6 +238,41 @@ function setupReminderCheck(): void {
   }, 30000); // Check every 30 seconds
 }
 
+function setupAutoUpdater(): void {
+  if (isDev) return;
+  try {
+    const { autoUpdater } = require('electron-updater');
+    autoUpdater.autoDownload = true;
+    autoUpdater.autoInstallOnAppQuit = true;
+
+    autoUpdater.on('update-available', (info: any) => {
+      console.log('Update available:', info?.version);
+      mainWindow?.webContents.send('app:update-available', info);
+    });
+
+    autoUpdater.on('update-downloaded', (info: any) => {
+      console.log('Update downloaded:', info?.version);
+      mainWindow?.webContents.send('app:update-downloaded', info);
+      if (Notification.isSupported()) {
+        const notif = new Notification({
+          title: 'Zion Update Ready',
+          body: `Version ${info?.version || ''} has been downloaded. Restart Zion to apply.`,
+          icon: getAppIconPath(),
+        });
+        notif.show();
+      }
+    });
+
+    setTimeout(() => {
+      autoUpdater.checkForUpdatesAndNotify().catch((err: any) => {
+        console.log('AutoUpdater check error:', err?.message || err);
+      });
+    }, 6000);
+  } catch (err) {
+    console.error('Failed to initialize autoUpdater:', err);
+  }
+}
+
 app.on('before-quit', () => {
   isQuitting = true;
 });
@@ -247,6 +282,7 @@ app.whenReady().then(() => {
   syncNativeTheme();
   createWindow();
   setupReminderCheck();
+  setupAutoUpdater();
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
