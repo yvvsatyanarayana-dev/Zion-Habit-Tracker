@@ -47,6 +47,41 @@ export function compareVersions(v1: string, v2: string): number {
   return 0;
 }
 
+/**
+ * Cleans up raw GitHub changelog text and removes raw compare links, hashes, markdown tags
+ */
+export function formatReleaseNotes(rawBody: string): string {
+  if (!rawBody || typeof rawBody !== 'string') {
+    return 'Performance improvements, UI refinements, and bug fixes.';
+  }
+
+  // Remove markdown links: [text](url) -> text
+  let text = rawBody.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1');
+  // Strip bold/italics symbols
+  text = text.replace(/[*_~`]/g, '');
+  // Strip raw URLs
+  text = text.replace(/https?:\/\/\S+/gi, '');
+
+  const lines = text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => {
+      const lower = l.toLowerCase();
+      if (!l) return false;
+      if (lower.includes('full changelog')) return false;
+      if (lower.startsWith('whats changed') || lower.startsWith("what's changed")) return false;
+      if (lower.includes('compare/')) return false;
+      if (lower.startsWith('@') && lower.includes('in #')) return false;
+      return true;
+    });
+
+  const cleaned = lines.join('\n').trim();
+  if (!cleaned || cleaned.length < 5) {
+    return 'Performance improvements, UI refinements, and bug fixes.';
+  }
+  return cleaned;
+}
+
 const DISMISSED_UPDATE_KEY = 'zion_dismissed_update_version';
 const LAST_CHECKED_KEY = 'zion_last_update_check_time';
 
@@ -127,7 +162,7 @@ export async function checkGitHubUpdate(): Promise<UpdateInfo | null> {
       currentVersion: APP_VERSION,
       latestVersion,
       releaseTitle: data.name || `Version ${latestVersion}`,
-      releaseNotes: data.body || '',
+      releaseNotes: formatReleaseNotes(data.body || ''),
       publishedAt: data.published_at || '',
       releaseUrl: data.html_url || GITHUB_RELEASES_URL,
       downloadUrl,
