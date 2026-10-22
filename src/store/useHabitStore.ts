@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Habit, Checkin, AppSettings, TabType, UserProfile, CheckinMood } from '../lib/types';
+import type { Habit, Checkin, AppSettings, TabType, UserProfile, CheckinMood, HabitDependency, WellnessLog, SkipReasonEntry, SkillProgress, TriggerRule } from '../lib/types';
 import { DEFAULT_SETTINGS, HABIT_PALETTE } from '../lib/constants';
 import { formatLocalDate } from '../lib/dateUtils';
 import { isHabitScheduledOnDay } from '../lib/statsUtils';
@@ -35,7 +35,14 @@ interface HabitStoreState {
   checkins: Record<string, Checkin>; // key: `${habitId}_${date}`
   allCheckinsList: Checkin[];
   settings: AppSettings;
-  
+
+  // New features state
+  habitDependencies: HabitDependency[];
+  wellnessLogs: Record<string, WellnessLog>; // key: date (YYYY-MM-DD)
+  skipReasons: Record<string, SkipReasonEntry>; // key: `${habitId}_${date}`
+  skillProgress: Record<string, SkillProgress>; // key: `${userId}_${skillId}`
+  triggerRules: TriggerRule[];
+
   // User Authentication & Profile
   currentUser: UserProfile | null;
   usersList: UserProfile[];
@@ -48,7 +55,7 @@ interface HabitStoreState {
   selectedYear: number;
   selectedMonth: number; // 0-11
   activeTab: TabType;
-  
+
   // UI states & Filters
   sidebarCollapsed: boolean;
   commandPaletteOpen: boolean;
@@ -74,7 +81,7 @@ interface HabitStoreState {
   setCommandPaletteOpen: (open: boolean) => void;
   openHabitModal: (habit?: Habit) => void;
   closeHabitModal: () => void;
-  
+
   // Auth actions
   setAuthScreen: (screen: 'register' | 'login' | 'app', message?: string) => void;
   registerUser: (userData: {
@@ -90,7 +97,7 @@ interface HabitStoreState {
   logoutUser: () => void;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   switchUser: (userId: string) => void;
-  
+
   // Date actions
   prevMonth: () => void;
   nextMonth: () => void;
@@ -98,7 +105,7 @@ interface HabitStoreState {
   setYear: (year: number) => void;
   jumpToToday: () => void;
   tickClock: (newDate: Date) => void;
-  
+
   // Data actions
   toggleCheckin: (habitId: string, dateStr: string) => Promise<void>;
   updateNumericValue: (habitId: string, dateStr: string, deltaOrValue: number, isDelta?: boolean) => Promise<void>;
@@ -113,6 +120,32 @@ interface HabitStoreState {
   exportData: () => Promise<string>;
   importData: (jsonStr: string) => Promise<boolean>;
   resetAllData: () => Promise<void>;
+
+  // Habit Dependencies actions
+  loadDependencies: () => Promise<void>;
+  addDependency: (habitId: string, dependsOnId: string, type: 'prerequisite' | 'anti') => Promise<void>;
+  removeDependency: (habitId: string, dependsOnId: string) => Promise<void>;
+  removeAllDependencies: (habitId: string) => Promise<void>;
+
+  // Wellness Logs actions
+  loadWellnessLogs: () => Promise<void>;
+  upsertWellnessLog: (log: { id: string; date: string; energy: number; mood: number; note?: string }) => Promise<void>;
+  deleteWellnessLog: (date: string) => Promise<void>;
+
+  // Skip Reasons actions
+  loadSkipReasons: () => Promise<void>;
+  upsertSkipReason: (reason: { id: string; habit_id: string; date: string; reason: 'forgot' | 'busy' | 'sick' | 'resistance' | 'other'; note?: string }) => Promise<void>;
+  deleteSkipReason: (id: string) => Promise<void>;
+
+  // Skill Progress actions
+  loadSkillProgress: (userId: string) => Promise<void>;
+  upsertSkillProgress: (progress: { user_id: string; skill_id: string; level: number; unlocked_at?: string | null }) => Promise<void>;
+
+  // Trigger Rules actions
+  loadTriggerRules: () => Promise<void>;
+  createTriggerRule: (rule: { id: string; habit_id: string; type: string; config: Record<string, unknown>; enabled?: boolean }) => Promise<void>;
+  updateTriggerRule: (id: string, updates: { type?: string; config?: Record<string, unknown>; enabled?: boolean }) => Promise<void>;
+  deleteTriggerRule: (id: string) => Promise<void>;
 }
 
 // Fallback in-memory / localStorage helpers when running outside Electron
@@ -175,7 +208,14 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
     checkins: {},
     allCheckinsList: [],
     settings: { ...DEFAULT_SETTINGS },
-    
+
+    // New features state
+    habitDependencies: [],
+    wellnessLogs: {},
+    skipReasons: {},
+    skillProgress: {},
+    triggerRules: [],
+
     // Auth & Profile state
     currentUser: initialAuth.currentUser,
     usersList: initialAuth.usersList,
@@ -187,7 +227,7 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
     selectedYear: now.getFullYear(),
     selectedMonth: now.getMonth(),
     activeTab: 'dashboard',
-    
+
     sidebarCollapsed: false,
     commandPaletteOpen: false,
     habitModalOpen: false,
@@ -232,10 +272,15 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
 
         if (window.api) {
           // Electron environment
-          const [dbHabits, dbCheckins, dbSettings] = await Promise.all([
+          const [dbHabits, dbCheckins, dbSettings, dbDependencies, dbWellnessLogs, dbSkipReasons, dbSkillProgress, dbTriggerRules] = await Promise.all([
             window.api.habits.getAll(true),
             window.api.checkins.getAll(),
             window.api.settings.getAll(),
+            window.api.dependencies.getAll(),
+            window.api.wellness.getAll(),
+            window.api.skipReasons.getForDate(''), // Will return empty for now
+            window.api.skills.getAll(''), // Will return empty for now
+            window.api.triggers.getAll(),
           ]);
 
           const parsedHabits: Habit[] = dbHabits.map((h) => ({
@@ -283,6 +328,30 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
             }
           }
 
+          // Parse wellness logs into map
+          const wellnessLogsMap: Record<string, WellnessLog> = {};
+          for (const w of dbWellnessLogs) {
+            wellnessLogsMap[w.date] = w;
+          }
+
+          // Parse skip reasons into map
+          const skipReasonsMap: Record<string, SkipReasonEntry> = {};
+          // Note: We'll load skip reasons on demand per habit/date
+
+          // Parse skill progress into map
+          const skillProgressMap: Record<string, SkillProgress> = {};
+          // Note: We'll load skill progress on demand per user
+
+          // Parse trigger rules
+          const triggerRules: TriggerRule[] = dbTriggerRules.map(t => ({
+            id: t.id,
+            habit_id: t.habit_id,
+            type: t.type,
+            config: JSON.parse(t.config),
+            enabled: Boolean(t.enabled),
+            created_at: t.created_at,
+          }));
+
           document.documentElement.setAttribute('data-theme', loadedSettings.theme || 'dark');
           sound.setEnabled(loadedSettings.sound_enabled ?? true);
 
@@ -291,6 +360,11 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
             checkins: checkinsMap,
             allCheckinsList: checkinsList,
             settings: loadedSettings,
+            habitDependencies: dbDependencies,
+            wellnessLogs: wellnessLogsMap,
+            skipReasons: skipReasonsMap,
+            skillProgress: skillProgressMap,
+            triggerRules,
             currentUser: null,
             usersList,
             authScreen: initialAuthScreen,
@@ -899,7 +973,277 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         checkins: {},
         allCheckinsList: [],
         settings: { ...DEFAULT_SETTINGS },
+        habitDependencies: [],
+        wellnessLogs: {},
+        skipReasons: {},
+        skillProgress: {},
+        triggerRules: [],
       });
+    },
+
+    // Habit Dependencies actions
+    loadDependencies: async () => {
+      if (window.api) {
+        const deps = await window.api.dependencies.getAll();
+        set({ habitDependencies: deps });
+      }
+    },
+
+    addDependency: async (habitId, dependsOnId, type) => {
+      if (window.api) {
+        await window.api.dependencies.create({ habit_id: habitId, depends_on_id: dependsOnId, type });
+        const deps = await window.api.dependencies.getAll();
+        set({ habitDependencies: deps });
+      } else {
+        // LocalStorage fallback
+        const newDep: HabitDependency = {
+          habit_id: habitId,
+          depends_on_id: dependsOnId,
+          type,
+          created_at: new Date().toISOString(),
+        };
+        set((state) => ({
+          habitDependencies: [...state.habitDependencies, newDep],
+        }));
+      }
+    },
+
+    removeDependency: async (habitId, dependsOnId) => {
+      if (window.api) {
+        await window.api.dependencies.delete(habitId, dependsOnId);
+        const deps = await window.api.dependencies.getAll();
+        set({ habitDependencies: deps });
+      } else {
+        set((state) => ({
+          habitDependencies: state.habitDependencies.filter(
+            (d) => !(d.habit_id === habitId && d.depends_on_id === dependsOnId)
+          ),
+        }));
+      }
+    },
+
+    removeAllDependencies: async (habitId) => {
+      if (window.api) {
+        await window.api.dependencies.deleteAll(habitId);
+        const deps = await window.api.dependencies.getAll();
+        set({ habitDependencies: deps });
+      } else {
+        set((state) => ({
+          habitDependencies: state.habitDependencies.filter(
+            (d) => d.habit_id !== habitId && d.depends_on_id !== habitId
+          ),
+        }));
+      }
+    },
+
+    // Wellness Logs actions
+    loadWellnessLogs: async () => {
+      if (window.api) {
+        const logs = await window.api.wellness.getAll();
+        const logsMap: Record<string, WellnessLog> = {};
+        for (const log of logs) {
+          logsMap[log.date] = log;
+        }
+        set({ wellnessLogs: logsMap });
+      }
+    },
+
+    upsertWellnessLog: async (log) => {
+      if (window.api) {
+        await window.api.wellness.upsert(log);
+        const updated = await window.api.wellness.get(log.date);
+        if (updated) {
+          set((state) => ({
+            wellnessLogs: { ...state.wellnessLogs, [log.date]: updated },
+          }));
+        }
+      } else {
+        const newLog: WellnessLog = {
+          id: log.id,
+          date: log.date,
+          energy: log.energy,
+          mood: log.mood,
+          note: log.note || '',
+          created_at: new Date().toISOString(),
+        };
+        set((state) => ({
+          wellnessLogs: { ...state.wellnessLogs, [log.date]: newLog },
+        }));
+      }
+    },
+
+    deleteWellnessLog: async (date) => {
+      if (window.api) {
+        await window.api.wellness.delete(date);
+        const logs = await window.api.wellness.getAll();
+        const logsMap: Record<string, WellnessLog> = {};
+        for (const log of logs) {
+          logsMap[log.date] = log;
+        }
+        set({ wellnessLogs: logsMap });
+      } else {
+        set((state) => {
+          const newLogs = { ...state.wellnessLogs };
+          delete newLogs[date];
+          return { wellnessLogs: newLogs };
+        });
+      }
+    },
+
+    // Skip Reasons actions
+    loadSkipReasons: async () => {
+      // Skip reasons are loaded per habit/date on demand
+    },
+
+    upsertSkipReason: async (reason) => {
+      if (window.api) {
+        await window.api.skipReasons.upsert(reason);
+        const updated = await window.api.skipReasons.get(reason.habit_id, reason.date);
+        if (updated) {
+          set((state) => ({
+            skipReasons: { ...state.skipReasons, [`${reason.habit_id}_${reason.date}`]: updated },
+          }));
+        }
+      } else {
+        const newReason: SkipReasonEntry = {
+          id: reason.id,
+          habit_id: reason.habit_id,
+          date: reason.date,
+          reason: reason.reason,
+          note: reason.note || '',
+          created_at: new Date().toISOString(),
+        };
+        set((state) => ({
+          skipReasons: { ...state.skipReasons, [`${reason.habit_id}_${reason.date}`]: newReason },
+        }));
+      }
+    },
+
+    deleteSkipReason: async (id) => {
+      if (window.api) {
+        await window.api.skipReasons.delete(id);
+      } else {
+        set((state) => {
+          const newReasons = { ...state.skipReasons };
+          for (const key of Object.keys(newReasons)) {
+            if (newReasons[key].id === id) {
+              delete newReasons[key];
+              break;
+            }
+          }
+          return { skipReasons: newReasons };
+        });
+      }
+    },
+
+    // Skill Progress actions
+    loadSkillProgress: async (userId) => {
+      if (window.api) {
+        const progress = await window.api.skills.getAll(userId);
+        const progressMap: Record<string, SkillProgress> = {};
+        for (const p of progress) {
+          progressMap[`${userId}_${p.skill_id}`] = p;
+        }
+        set((state) => ({
+          skillProgress: { ...state.skillProgress, ...progressMap },
+        }));
+      }
+    },
+
+    upsertSkillProgress: async (progress) => {
+      if (window.api) {
+        await window.api.skills.upsert(progress);
+        const updated = await window.api.skills.get(progress.user_id, progress.skill_id);
+        if (updated) {
+          set((state) => ({
+            skillProgress: { ...state.skillProgress, [`${progress.user_id}_${progress.skill_id}`]: updated },
+          }));
+        }
+      } else {
+        const newProgress: SkillProgress = {
+          user_id: progress.user_id,
+          skill_id: progress.skill_id,
+          level: progress.level,
+          unlocked_at: progress.unlocked_at || null,
+        };
+        set((state) => ({
+          skillProgress: { ...state.skillProgress, [`${progress.user_id}_${progress.skill_id}`]: newProgress },
+        }));
+      }
+    },
+
+    // Trigger Rules actions
+    loadTriggerRules: async () => {
+      if (window.api) {
+        const rules = await window.api.triggers.getAll();
+        const parsedRules: TriggerRule[] = rules.map(r => ({
+          id: r.id,
+          habit_id: r.habit_id,
+          type: r.type,
+          config: JSON.parse(r.config),
+          enabled: Boolean(r.enabled),
+          created_at: r.created_at,
+        }));
+        set({ triggerRules: parsedRules });
+      }
+    },
+
+    createTriggerRule: async (rule) => {
+      if (window.api) {
+        await window.api.triggers.create({
+          id: rule.id,
+          habit_id: rule.habit_id,
+          type: rule.type,
+          config: JSON.stringify(rule.config),
+          enabled: rule.enabled ? 1 : 0,
+        });
+        const rules = await window.api.triggers.getAll();
+        const parsedRules: TriggerRule[] = rules.map(r => ({
+          id: r.id,
+          habit_id: r.habit_id,
+          type: r.type,
+          config: JSON.parse(r.config),
+          enabled: Boolean(r.enabled),
+          created_at: r.created_at,
+        }));
+        set({ triggerRules: parsedRules });
+      }
+    },
+
+    updateTriggerRule: async (id, updates) => {
+      if (window.api) {
+        await window.api.triggers.update(id, {
+          type: updates.type,
+          config: updates.config ? JSON.stringify(updates.config) : undefined,
+          enabled: updates.enabled !== undefined ? (updates.enabled ? 1 : 0) : undefined,
+        });
+        const rules = await window.api.triggers.getAll();
+        const parsedRules: TriggerRule[] = rules.map(r => ({
+          id: r.id,
+          habit_id: r.habit_id,
+          type: r.type,
+          config: JSON.parse(r.config),
+          enabled: Boolean(r.enabled),
+          created_at: r.created_at,
+        }));
+        set({ triggerRules: parsedRules });
+      }
+    },
+
+    deleteTriggerRule: async (id) => {
+      if (window.api) {
+        await window.api.triggers.delete(id);
+        const rules = await window.api.triggers.getAll();
+        const parsedRules: TriggerRule[] = rules.map(r => ({
+          id: r.id,
+          habit_id: r.habit_id,
+          type: r.type,
+          config: JSON.parse(r.config),
+          enabled: Boolean(r.enabled),
+          created_at: r.created_at,
+        }));
+        set({ triggerRules: parsedRules });
+      }
     },
   };
 });

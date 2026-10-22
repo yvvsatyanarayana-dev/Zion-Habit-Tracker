@@ -27,10 +27,56 @@ export interface CheckinData {
   mood?: string;
 }
 
+export interface HabitDependencyData {
+  habit_id: string;
+  depends_on_id: string;
+  type: 'prerequisite' | 'anti';
+  created_at: string;
+}
+
+export interface WellnessLogData {
+  id: string;
+  date: string;
+  energy: number;
+  mood: number;
+  note: string;
+  created_at: string;
+}
+
+export interface SkipReasonData {
+  id: string;
+  habit_id: string;
+  date: string;
+  reason: 'forgot' | 'busy' | 'sick' | 'resistance' | 'other';
+  note: string;
+  created_at: string;
+}
+
+export interface SkillProgressData {
+  user_id: string;
+  skill_id: string;
+  level: number;
+  unlocked_at: string | null;
+}
+
+export interface TriggerRuleData {
+  id: string;
+  habit_id: string;
+  type: string;
+  config: string;
+  enabled: number;
+  created_at: string;
+}
+
 export interface ExportDataPayload {
   habits: HabitData[];
   checkins: CheckinData[];
   settings: Record<string, string>;
+  dependencies?: HabitDependencyData[];
+  wellness_logs?: WellnessLogData[];
+  skip_reasons?: SkipReasonData[];
+  skill_progress?: SkillProgressData[];
+  trigger_rules?: TriggerRuleData[];
 }
 
 export interface ElectronAPI {
@@ -68,6 +114,43 @@ export interface ElectronAPI {
     reset: () => Promise<{ habits: HabitData[]; checkins: CheckinData[]; settings: Record<string, string> }>;
   };
   notify: (title: string, body: string) => Promise<boolean>;
+  // Habit Dependencies
+  dependencies: {
+    getAll: (habitId?: string) => Promise<HabitDependencyData[]>;
+    getDependents: (dependsOnId: string) => Promise<HabitDependencyData[]>;
+    create: (dep: { habit_id: string; depends_on_id: string; type: 'prerequisite' | 'anti' }) => Promise<HabitDependencyData[]>;
+    delete: (habitId: string, dependsOnId: string) => Promise<HabitDependencyData[]>;
+    deleteAll: (habitId: string) => Promise<HabitDependencyData[]>;
+  };
+  // Wellness Logs
+  wellness: {
+    get: (date: string) => Promise<WellnessLogData | undefined>;
+    getMonth: (yearMonth: string) => Promise<WellnessLogData[]>;
+    getAll: () => Promise<WellnessLogData[]>;
+    upsert: (log: { id: string; date: string; energy: number; mood: number; note?: string }) => Promise<WellnessLogData | undefined>;
+    delete: (date: string) => Promise<WellnessLogData[]>;
+  };
+  // Skip Reasons
+  skipReasons: {
+    get: (habitId: string, date: string) => Promise<SkipReasonData | undefined>;
+    getForHabit: (habitId: string) => Promise<SkipReasonData[]>;
+    getForDate: (date: string) => Promise<SkipReasonData[]>;
+    upsert: (reason: { id: string; habit_id: string; date: string; reason: 'forgot' | 'busy' | 'sick' | 'resistance' | 'other'; note?: string }) => Promise<SkipReasonData | undefined>;
+    delete: (id: string) => Promise<boolean>;
+  };
+  // Skill Progress
+  skills: {
+    getAll: (userId: string) => Promise<SkillProgressData[]>;
+    get: (userId: string, skillId: string) => Promise<SkillProgressData | undefined>;
+    upsert: (progress: { user_id: string; skill_id: string; level: number; unlocked_at?: string | null }) => Promise<SkillProgressData | undefined>;
+  };
+  // Trigger Rules
+  triggers: {
+    getAll: (habitId?: string) => Promise<TriggerRuleData[]>;
+    create: (rule: { id: string; habit_id: string; type: string; config: string; enabled?: number }) => Promise<TriggerRuleData[]>;
+    update: (id: string, updates: { type?: string; config?: string; enabled?: number }) => Promise<TriggerRuleData[]>;
+    delete: (id: string) => Promise<TriggerRuleData[]>;
+  };
 }
 
 const api: ElectronAPI = {
@@ -105,6 +188,43 @@ const api: ElectronAPI = {
     reset: () => ipcRenderer.invoke('data:reset'),
   },
   notify: (title, body) => ipcRenderer.invoke('app:notify', title, body),
+  // Habit Dependencies
+  dependencies: {
+    getAll: (habitId) => ipcRenderer.invoke('dependencies:getAll', habitId),
+    getDependents: (dependsOnId) => ipcRenderer.invoke('dependencies:getDependents', dependsOnId),
+    create: (dep) => ipcRenderer.invoke('dependencies:create', dep),
+    delete: (habitId, dependsOnId) => ipcRenderer.invoke('dependencies:delete', habitId, dependsOnId),
+    deleteAll: (habitId) => ipcRenderer.invoke('dependencies:deleteAll', habitId),
+  },
+  // Wellness Logs
+  wellness: {
+    get: (date) => ipcRenderer.invoke('wellness:get', date),
+    getMonth: (yearMonth) => ipcRenderer.invoke('wellness:getMonth', yearMonth),
+    getAll: () => ipcRenderer.invoke('wellness:getAll'),
+    upsert: (log) => ipcRenderer.invoke('wellness:upsert', log),
+    delete: (date) => ipcRenderer.invoke('wellness:delete', date),
+  },
+  // Skip Reasons
+  skipReasons: {
+    get: (habitId, date) => ipcRenderer.invoke('skipReasons:get', habitId, date),
+    getForHabit: (habitId) => ipcRenderer.invoke('skipReasons:getForHabit', habitId),
+    getForDate: (date) => ipcRenderer.invoke('skipReasons:getForDate', date),
+    upsert: (reason) => ipcRenderer.invoke('skipReasons:upsert', reason),
+    delete: (id) => ipcRenderer.invoke('skipReasons:delete', id),
+  },
+  // Skill Progress
+  skills: {
+    getAll: (userId) => ipcRenderer.invoke('skills:getAll', userId),
+    get: (userId, skillId) => ipcRenderer.invoke('skills:get', userId, skillId),
+    upsert: (progress) => ipcRenderer.invoke('skills:upsert', progress),
+  },
+  // Trigger Rules
+  triggers: {
+    getAll: (habitId) => ipcRenderer.invoke('triggers:getAll', habitId),
+    create: (rule) => ipcRenderer.invoke('triggers:create', rule),
+    update: (id, updates) => ipcRenderer.invoke('triggers:update', id, updates),
+    delete: (id) => ipcRenderer.invoke('triggers:delete', id),
+  },
 };
 
 contextBridge.exposeInMainWorld('api', api);

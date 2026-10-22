@@ -84,3 +84,74 @@ export interface HabitMonthlyProgress {
   currentStreak: number;
   longestStreak: number;
 }
+
+// Habit Dependencies (Chains)
+export type DependencyType = 'prerequisite' | 'anti';
+
+export interface HabitDependency {
+  habit_id: string;
+  depends_on_id: string;
+  type: DependencyType;
+  created_at: string;
+}
+
+// Wellness Logs (Energy/Mood tracking)
+export interface WellnessLog {
+  id: string;
+  date: string; // YYYY-MM-DD
+  energy: number; // 1-5
+  mood: number; // 1-5
+  note: string;
+  created_at: string;
+}
+
+// Skip Reasons (Failure autopsies)
+export type SkipReason = 'forgot' | 'busy' | 'sick' | 'resistance' | 'other';
+
+export interface SkipReasonEntry {
+  id: string;
+  habit_id: string;
+  date: string; // YYYY-MM-DD
+  reason: SkipReason;
+  note: string;
+  created_at: string;
+}
+
+// Skill Tree Progress
+export interface SkillProgress {
+  user_id: string;
+  skill_id: string;
+  level: number;
+  unlocked_at: string | null;
+}
+
+// Trigger Rules
+export interface TriggerRule {
+  id: string;
+  habit_id: string;
+  type: string;
+  config: Record<string, unknown>;
+  enabled: boolean;
+  created_at: string;
+}
+
+// Habit Chain Validation Result
+export interface ChainValidationResult {
+  valid: boolean;
+  cycles: string[][]; // arrays of habit IDs forming cycles
+  errors: string[];
+}
+
+// Smart Reschedule Result
+export interface RescheduleResult {
+  moved: Array<{ habitId: string; fromDate: string; toDate: string }>;
+  blocked: Array<{ habitId: string; reason: string }>;
+}
+
+// Habit Replay State
+export interface HabitReplayState {
+  date: Date;
+  habits: Habit[];
+  checkins: Record<string, import('./types').Checkin>;
+  wellnessLog?: WellnessLog;
+}

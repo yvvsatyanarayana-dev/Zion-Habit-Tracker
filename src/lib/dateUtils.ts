@@ -153,3 +153,13 @@ export function formatLiveClock(date: Date, format24h: boolean = false): string 
   const timePart = format24h ? format(date, 'HH:mm:ss') : format(date, 'hh:mm:ss a');
   return `${datePart}   ${timePart}`;
 }
+
+export function getDayName(dayIndex: number): string {
+  const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return names[dayIndex] || 'Unknown';
+}
+
+export function getMonthName(monthIndex: number): string {
+  const names = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  return names[monthIndex] || 'Unknown';
+}

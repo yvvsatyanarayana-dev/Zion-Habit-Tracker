@@ -71,6 +71,77 @@ const migrations: Migration[] = [
       } catch {}
     },
   },
+  {
+    version: 3,
+    up: (db) => {
+      // Habit dependencies table (for chains/prerequisites)
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS habit_dependencies (
+          habit_id TEXT NOT NULL,
+          depends_on_id TEXT NOT NULL,
+          type TEXT NOT NULL CHECK(type IN ('prerequisite', 'anti')),
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (habit_id, depends_on_id),
+          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE,
+          FOREIGN KEY (depends_on_id) REFERENCES habits(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_habit_deps_habit ON habit_dependencies(habit_id);
+        CREATE INDEX IF NOT EXISTS idx_habit_deps_depends_on ON habit_dependencies(depends_on_id);
+      `);
+
+      // Wellness logs (energy/mood tracking)
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS wellness_logs (
+          id TEXT PRIMARY KEY,
+          date TEXT NOT NULL UNIQUE,
+          energy INTEGER NOT NULL CHECK(energy BETWEEN 1 AND 5),
+          mood INTEGER NOT NULL CHECK(mood BETWEEN 1 AND 5),
+          note TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_wellness_date ON wellness_logs(date);
+      `);
+
+      // Skip reasons for failure autopsies
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS skip_reasons (
+          id TEXT PRIMARY KEY,
+          habit_id TEXT NOT NULL,
+          date TEXT NOT NULL,
+          reason TEXT NOT NULL CHECK(reason IN ('forgot', 'busy', 'sick', 'resistance', 'other')),
+          note TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_skip_reasons_habit_date ON skip_reasons(habit_id, date);
+      `);
+
+      // Skill tree progress
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS skill_progress (
+          user_id TEXT NOT NULL,
+          skill_id TEXT NOT NULL,
+          level INTEGER NOT NULL DEFAULT 0,
+          unlocked_at TEXT,
+          PRIMARY KEY (user_id, skill_id)
+        );
+      `);
+
+      // Trigger rules
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS trigger_rules (
+          id TEXT PRIMARY KEY,
+          habit_id TEXT NOT NULL,
+          type TEXT NOT NULL,
+          config TEXT NOT NULL,
+          enabled INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_trigger_rules_habit ON trigger_rules(habit_id);
+      `);
+    },
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

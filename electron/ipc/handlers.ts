@@ -2,7 +2,7 @@ import { ipcMain, BrowserWindow, Notification, app, shell, nativeTheme } from 'e
 import path from 'path';
 import fs from 'fs';
 import * as db from '../db';
-import type { HabitRow, CheckinRow } from '../db/types';
+import type { HabitRow, CheckinRow, HabitDependencyRow, WellnessLogRow, SkipReasonRow, SkillProgressRow, TriggerRuleRow } from '../db/types';
 
 export function registerIpcHandlers(
   mainWindow: BrowserWindow,
@@ -178,5 +178,109 @@ export function registerIpcHandlers(
       return true;
     }
     return false;
+  });
+
+  // Habit Dependencies
+  ipcMain.handle('dependencies:getAll', (_event, habitId?: string) => {
+    return db.getHabitDependencies(habitId);
+  });
+
+  ipcMain.handle('dependencies:getDependents', (_event, dependsOnId: string) => {
+    return db.getHabitDependents(dependsOnId);
+  });
+
+  ipcMain.handle('dependencies:create', (_event, dep: { habit_id: string; depends_on_id: string; type: 'prerequisite' | 'anti' }) => {
+    db.createHabitDependency(dep);
+    return db.getHabitDependencies(dep.habit_id);
+  });
+
+  ipcMain.handle('dependencies:delete', (_event, habitId: string, dependsOnId: string) => {
+    db.deleteHabitDependency(habitId, dependsOnId);
+    return db.getHabitDependencies(habitId);
+  });
+
+  ipcMain.handle('dependencies:deleteAll', (_event, habitId: string) => {
+    db.deleteAllHabitDependencies(habitId);
+    return db.getHabitDependencies(habitId);
+  });
+
+  // Wellness Logs
+  ipcMain.handle('wellness:get', (_event, date: string) => {
+    return db.getWellnessLog(date);
+  });
+
+  ipcMain.handle('wellness:getMonth', (_event, yearMonth: string) => {
+    return db.getWellnessLogsForMonth(yearMonth);
+  });
+
+  ipcMain.handle('wellness:getAll', () => {
+    return db.getAllWellnessLogs();
+  });
+
+  ipcMain.handle('wellness:upsert', (_event, log: { id: string; date: string; energy: number; mood: number; note?: string }) => {
+    db.upsertWellnessLog(log);
+    return db.getWellnessLog(log.date);
+  });
+
+  ipcMain.handle('wellness:delete', (_event, date: string) => {
+    db.deleteWellnessLog(date);
+    return db.getAllWellnessLogs();
+  });
+
+  // Skip Reasons
+  ipcMain.handle('skipReasons:get', (_event, habitId: string, date: string) => {
+    return db.getSkipReason(habitId, date);
+  });
+
+  ipcMain.handle('skipReasons:getForHabit', (_event, habitId: string) => {
+    return db.getSkipReasonsForHabit(habitId);
+  });
+
+  ipcMain.handle('skipReasons:getForDate', (_event, date: string) => {
+    return db.getSkipReasonsForDate(date);
+  });
+
+  ipcMain.handle('skipReasons:upsert', (_event, reason: { id: string; habit_id: string; date: string; reason: 'forgot' | 'busy' | 'sick' | 'resistance' | 'other'; note?: string }) => {
+    db.upsertSkipReason(reason);
+    return db.getSkipReason(reason.habit_id, reason.date);
+  });
+
+  ipcMain.handle('skipReasons:delete', (_event, id: string) => {
+    db.deleteSkipReason(id);
+    return true;
+  });
+
+  // Skill Progress
+  ipcMain.handle('skills:getAll', (_event, userId: string) => {
+    return db.getSkillProgress(userId);
+  });
+
+  ipcMain.handle('skills:get', (_event, userId: string, skillId: string) => {
+    return db.getSkillLevel(userId, skillId);
+  });
+
+  ipcMain.handle('skills:upsert', (_event, progress: { user_id: string; skill_id: string; level: number; unlocked_at?: string | null }) => {
+    db.upsertSkillProgress(progress);
+    return db.getSkillLevel(progress.user_id, progress.skill_id);
+  });
+
+  // Trigger Rules
+  ipcMain.handle('triggers:getAll', (_event, habitId?: string) => {
+    return db.getTriggerRules(habitId);
+  });
+
+  ipcMain.handle('triggers:create', (_event, rule: { id: string; habit_id: string; type: string; config: string; enabled?: number }) => {
+    db.createTriggerRule(rule);
+    return db.getTriggerRules(rule.habit_id);
+  });
+
+  ipcMain.handle('triggers:update', (_event, id: string, updates: { type?: string; config?: string; enabled?: number }) => {
+    db.updateTriggerRule(id, updates);
+    return db.getTriggerRules();
+  });
+
+  ipcMain.handle('triggers:delete', (_event, id: string) => {
+    db.deleteTriggerRule(id);
+    return db.getTriggerRules();
   });
 }
