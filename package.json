@@ -1,6 +1,6 @@
 {
   "name": "zion",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Zion - Premium Habit Tracker desktop application developed by Satyanarayana",
   "main": "dist-electron/main.js",
   "scripts": {

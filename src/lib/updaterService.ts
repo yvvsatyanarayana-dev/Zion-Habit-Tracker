@@ -29,6 +29,33 @@ export interface UpdateInfo {
 }
 
 /**
+ * Universal safe external URL opener.
+ * On Android (Capacitor), window.open with '_system' opens the device default browser
+ * (e.g. Chrome) so APK downloads and GitHub pages work 100% reliably.
+ */
+export function openExternalUrl(url: string): void {
+  if (!url) return;
+  try {
+    if (isAndroidApp()) {
+      // In Capacitor Android, '_system' signals the native Capacitor intent to open in external browser
+      const win = window.open(url, '_system');
+      if (!win) {
+        window.location.href = url;
+      }
+    } else if (typeof window !== 'undefined' && (window as any).api?.openExternal) {
+      (window as any).api.openExternal(url);
+    } else {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  } catch (err) {
+    console.warn('Failed to open external URL with window.open, falling back to location.href:', err);
+    try {
+      window.location.href = url;
+    } catch {}
+  }
+}
+
+/**
  * Compare two semver strings: returns > 0 if v1 > v2, < 0 if v1 < v2, 0 if equal
  */
 export function compareVersions(v1: string, v2: string): number {
@@ -118,7 +145,19 @@ export async function checkGitHubUpdate(): Promise<UpdateInfo | null> {
           currentVersion: APP_VERSION,
           latestVersion: APP_VERSION,
           releaseTitle: 'Up to date',
-          releaseNotes: '',
+          releaseNotes: 'You are running the latest version.',
+          publishedAt: '',
+          releaseUrl: GITHUB_RELEASES_URL,
+        };
+      }
+      if (res.status === 403) {
+        // GitHub rate limited
+        return {
+          hasUpdate: false,
+          currentVersion: APP_VERSION,
+          latestVersion: APP_VERSION,
+          releaseTitle: 'Rate limit reached',
+          releaseNotes: 'GitHub API rate limit reached. You can view releases directly on GitHub.',
           publishedAt: '',
           releaseUrl: GITHUB_RELEASES_URL,
         };

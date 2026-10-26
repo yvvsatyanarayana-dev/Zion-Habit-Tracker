@@ -1,22 +1,76 @@
-import type { Habit, Checkin, AppSettings } from './types';
+import type { Habit, Checkin, AppSettings, HabitDependency, WellnessLog, SkipReasonEntry, UserProfile } from './types';
 import { generateMonthDays, formatLocalDate } from './dateUtils';
 import { isHabitScheduledOnDay, computeStreakStats, computeHabitsMonthlyProgress } from './statsUtils';
 
+export interface ExportResult {
+  success: boolean;
+  message: string;
+  method?: 'share' | 'download' | 'clipboard' | 'aborted';
+}
+
 /**
- * Downloads a string content as a file with UTF-8 BOM support for Microsoft Excel compatibility.
+ * Downloads string content as a file with UTF-8 BOM support for Microsoft Excel compatibility.
+ * On Android / mobile environments, seamlessly falls back to the native Web Share API
+ * so users can save directly to device Downloads/Files, Google Drive, or messaging apps.
  */
-export function downloadFile(content: string, fileName: string, contentType: string) {
-  // Add UTF-8 BOM for CSV to prevent character encoding issues in Excel on Windows
+export async function downloadFile(
+  content: string,
+  fileName: string,
+  contentType: string
+): Promise<ExportResult> {
   const finalContent = contentType.includes('csv') ? '\uFEFF' + content : content;
-  const blob = new Blob([finalContent], { type: `${contentType};charset=utf-8;` });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const mimeType = `${contentType};charset=utf-8;`;
+  const blob = new Blob([finalContent], { type: mimeType });
+
+  // 1. Android & Mobile Web Share API (native share sheet)
+  if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    try {
+      if (typeof File !== 'undefined' && typeof navigator.canShare === 'function') {
+        const file = new File([blob], fileName, { type: contentType });
+        if (navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: fileName,
+            text: `Zion Backup: ${fileName}`,
+          });
+          return { success: true, message: `Backup shared / saved via Android share sheet.`, method: 'share' };
+        }
+      }
+    } catch (err: any) {
+      if (err?.name === 'AbortError') {
+        return { success: true, message: 'Share sheet dismissed.', method: 'aborted' };
+      }
+      console.warn('Web Share API file share failed, falling back to download:', err);
+    }
+  }
+
+  // 2. Standard Browser / Electron Anchor Download
+  try {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    return { success: true, message: `Saved ${fileName} to Downloads.`, method: 'download' };
+  } catch (err) {
+    // 3. Fallback to Data URI
+    try {
+      const dataUri = `data:${contentType};charset=utf-8,` + encodeURIComponent(finalContent);
+      const a = document.createElement('a');
+      a.href = dataUri;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return { success: true, message: `Saved ${fileName}.`, method: 'download' };
+    } catch (dataErr) {
+      console.error('All download methods failed:', dataErr);
+      return { success: false, message: 'Could not automatically save file on this device.' };
+    }
+  }
 }
 
 /**
@@ -58,13 +112,13 @@ export function escapeCSV(value: string | number | boolean | null | undefined): 
  * 1. Comprehensive Daily Activity Ledger CSV.
  * Detailed row-by-row tracking ledger with dates, days, habits, completion status, streaks and goals.
  */
-export function exportCSVHistory(
+export async function exportCSVHistory(
   habits: Habit[],
   checkinsDict: Record<string, Checkin> = {},
   checkinsList: Checkin[] = [],
   settings?: AppSettings,
   currentDate: Date = new Date()
-) {
+): Promise<ExportResult> {
   try {
     const checkinsMap = getConsolidatedCheckins(checkinsDict, checkinsList);
     const activeHabits = habits.filter((h) => !h.archived);
@@ -195,10 +249,10 @@ export function exportCSVHistory(
     }
 
     const csvContent = rows.join('\r\n');
-    downloadFile(csvContent, `habit-tracker-ledger-${todayStr}.csv`, 'text/csv');
+    return await downloadFile(csvContent, `habit-tracker-ledger-${todayStr}.csv`, 'text/csv');
   } catch (err) {
     console.error('Failed to export CSV history:', err);
-    alert('An error occurred while exporting the Activity Ledger CSV. Please check the developer console.');
+    return { success: false, message: 'An error occurred while exporting the Activity Ledger CSV.' };
   }
 }
 
@@ -207,13 +261,13 @@ export function exportCSVHistory(
  * Table with Date, Day of Week, and a dedicated column for each habit.
  * Professional layout with clear past vs upcoming separation and an executive month-to-date summary.
  */
-export function exportCSVMatrix(
+export async function exportCSVMatrix(
   habits: Habit[],
   checkinsDict: Record<string, Checkin> = {},
   checkinsList: Checkin[] = [],
   settings?: AppSettings,
   currentDate: Date = new Date()
-) {
+): Promise<ExportResult> {
   try {
     const checkinsMap = getConsolidatedCheckins(checkinsDict, checkinsList);
     const activeHabits = habits.filter((h) => !h.archived);
@@ -280,7 +334,6 @@ export function exportCSVMatrix(
         if (isCompleted) dailyCompleted++;
 
         if (isFuture) {
-          // Future dates haven't arrived yet
           habitStatuses.push(isScheduled ? 'Upcoming' : 'Rest Day');
         } else if (isCompleted) {
           habitStatuses.push('Completed');
@@ -293,13 +346,11 @@ export function exportCSVMatrix(
         }
       });
 
-      // Accumulate Month-to-Date metrics (only for days up to today)
       if (!isFuture) {
         mtdTotalCompleted += dailyCompleted;
         mtdTotalScheduled += dailyScheduled;
       }
 
-      // Display metrics
       let completedDisplay: string | number = dailyCompleted;
       let scheduledDisplay: string | number = dailyScheduled;
       let successRateDisplay = '0%';
@@ -325,7 +376,6 @@ export function exportCSVMatrix(
       );
     });
 
-    // Executive Summary Row at the bottom
     const overallRate =
       mtdTotalScheduled > 0 ? `${Math.round((mtdTotalCompleted / mtdTotalScheduled) * 100)}%` : '0%';
 
@@ -350,64 +400,156 @@ export function exportCSVMatrix(
     );
 
     const csvContent = rows.join('\r\n');
-    downloadFile(csvContent, `habit-tracker-matrix-grid-${todayStr}.csv`, 'text/csv');
+    return await downloadFile(csvContent, `habit-tracker-matrix-grid-${todayStr}.csv`, 'text/csv');
   } catch (err) {
     console.error('Failed to export CSV matrix:', err);
-    alert('An error occurred while exporting the Habit Matrix CSV. Please check the developer console.');
+    return { success: false, message: 'An error occurred while exporting the Habit Matrix CSV.' };
   }
+}
+
+export interface FullBackupPayload {
+  app: string;
+  version: string;
+  exported_at: string;
+  metrics: {
+    total_habits: number;
+    active_habits: number;
+    total_recorded_checkins: number;
+    current_streak_days: number;
+    longest_streak_days: number;
+  };
+  settings: AppSettings;
+  habits: Habit[];
+  checkins: Checkin[];
+  dependencies?: HabitDependency[];
+  wellness_logs?: WellnessLog[];
+  skip_reasons?: SkipReasonEntry[];
+  users?: UserProfile[];
+}
+
+/**
+ * Generates the full JSON backup string containing habits, checkins, settings, and extra features.
+ */
+export function generateFullBackupJSON(
+  habits: Habit[],
+  checkinsDict: Record<string, Checkin> = {},
+  checkinsList: Checkin[] = [],
+  settings?: AppSettings,
+  currentDate: Date = new Date(),
+  extraData?: {
+    dependencies?: HabitDependency[];
+    wellnessLogs?: Record<string, WellnessLog>;
+    skipReasons?: Record<string, SkipReasonEntry>;
+    usersList?: UserProfile[];
+  }
+): string {
+  const checkinsMap = getConsolidatedCheckins(checkinsDict, checkinsList);
+  const activeHabits = habits.filter((h) => !h.archived);
+  const allCheckinsArray = Array.from(checkinsMap.values());
+  const streakStats = computeStreakStats(habits, allCheckinsArray, settings?.streak_threshold ?? 50, currentDate);
+
+  const payload: FullBackupPayload = {
+    app: 'Zion Habit Tracker Studio',
+    version: '1.0.3',
+    exported_at: new Date().toISOString(),
+    metrics: {
+      total_habits: habits.length,
+      active_habits: activeHabits.length,
+      total_recorded_checkins: allCheckinsArray.filter((c) => c.completed).length,
+      current_streak_days: streakStats.currentStreak,
+      longest_streak_days: streakStats.longestStreak,
+    },
+    settings: settings || ({} as AppSettings),
+    habits,
+    checkins: allCheckinsArray,
+    dependencies: extraData?.dependencies || [],
+    wellness_logs: extraData?.wellnessLogs ? Object.values(extraData.wellnessLogs) : [],
+    skip_reasons: extraData?.skipReasons ? Object.values(extraData.skipReasons) : [],
+    users: extraData?.usersList || [],
+  };
+
+  return JSON.stringify(payload, null, 2);
 }
 
 /**
  * 3. Complete JSON Backup (Production format with metadata & verification headers).
  */
-export function exportJSONBackup(
+export async function exportJSONBackup(
   habits: Habit[],
   checkinsDict: Record<string, Checkin> = {},
   checkinsList: Checkin[] = [],
   settings?: AppSettings,
-  currentDate: Date = new Date()
-) {
+  currentDate: Date = new Date(),
+  extraData?: {
+    dependencies?: HabitDependency[];
+    wellnessLogs?: Record<string, WellnessLog>;
+    skipReasons?: Record<string, SkipReasonEntry>;
+    usersList?: UserProfile[];
+  }
+): Promise<ExportResult> {
   try {
-    const checkinsMap = getConsolidatedCheckins(checkinsDict, checkinsList);
-    const activeHabits = habits.filter((h) => !h.archived);
-    const allCheckinsArray = Array.from(checkinsMap.values());
-    const streakStats = computeStreakStats(habits, allCheckinsArray, settings?.streak_threshold ?? 50, currentDate);
-
-    const data = {
-      app: 'Habit Tracker Studio',
-      version: '1.0.0',
-      exported_at: new Date().toISOString(),
-      metrics: {
-        total_habits: habits.length,
-        active_habits: activeHabits.length,
-        total_recorded_checkins: allCheckinsArray.filter((c) => c.completed).length,
-        current_streak_days: streakStats.currentStreak,
-        longest_streak_days: streakStats.longestStreak,
-      },
-      settings: settings || {},
-      habits,
-      checkins: allCheckinsArray,
-    };
-
-    const jsonStr = JSON.stringify(data, null, 2);
+    const jsonStr = generateFullBackupJSON(habits, checkinsDict, checkinsList, settings, currentDate, extraData);
     const fileDate = formatLocalDate(currentDate);
-    downloadFile(jsonStr, `habit-tracker-backup-${fileDate}.json`, 'application/json');
+    return await downloadFile(jsonStr, `zion-backup-${fileDate}.json`, 'application/json');
   } catch (err) {
     console.error('Failed to export JSON backup:', err);
-    alert('An error occurred while exporting the JSON backup.');
+    return { success: false, message: 'An error occurred while exporting the JSON backup.' };
+  }
+}
+
+/**
+ * Copies the complete JSON backup to the clipboard (works 100% on Android and desktop).
+ */
+export async function copyBackupToClipboard(
+  habits: Habit[],
+  checkinsDict: Record<string, Checkin> = {},
+  checkinsList: Checkin[] = [],
+  settings?: AppSettings,
+  currentDate: Date = new Date(),
+  extraData?: {
+    dependencies?: HabitDependency[];
+    wellnessLogs?: Record<string, WellnessLog>;
+    skipReasons?: Record<string, SkipReasonEntry>;
+    usersList?: UserProfile[];
+  }
+): Promise<ExportResult> {
+  try {
+    const jsonStr = generateFullBackupJSON(habits, checkinsDict, checkinsList, settings, currentDate, extraData);
+    if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(jsonStr);
+      return { success: true, message: 'Complete backup JSON copied to clipboard!', method: 'clipboard' };
+    } else {
+      // Fallback textarea copy
+      const textarea = document.createElement('textarea');
+      textarea.value = jsonStr;
+      textarea.style.position = 'fixed';
+      textarea.style.left = '-9999px';
+      document.body.appendChild(textarea);
+      textarea.focus();
+      textarea.select();
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      if (successful) {
+        return { success: true, message: 'Complete backup JSON copied to clipboard!', method: 'clipboard' };
+      }
+      return { success: false, message: 'Unable to access device clipboard.' };
+    }
+  } catch (err) {
+    console.error('Failed to copy backup to clipboard:', err);
+    return { success: false, message: 'Could not copy backup to clipboard.' };
   }
 }
 
 /**
  * 4. Formatted Markdown Summary Activity Report.
  */
-export function exportMarkdownSummary(
+export async function exportMarkdownSummary(
   habits: Habit[],
   checkinsDict: Record<string, Checkin> = {},
   checkinsList: Checkin[] = [],
   settings?: AppSettings,
   currentDate: Date = new Date()
-) {
+): Promise<ExportResult> {
   try {
     const checkinsMap = getConsolidatedCheckins(checkinsDict, checkinsList);
     const activeHabits = habits.filter((h) => !h.archived);
@@ -426,7 +568,7 @@ export function exportMarkdownSummary(
     const monthlyProgress = computeHabitsMonthlyProgress(habitsToProcess, checkinsRecord, year, month, currentDate);
     const progressMap = new Map(monthlyProgress.map((p) => [p.habit.id, p]));
 
-    let md = `# Habit Tracker Studio — Executive Activity Report\n\n`;
+    let md = `# Zion Habit Tracker — Executive Activity Report\n\n`;
     md += `> **Report Date**: ${new Date().toLocaleDateString('en-US', { dateStyle: 'full' })}\n`;
     md += `> **System State**: ${activeHabits.length} Active Habits · ${streakStats.currentStreak} Day Burning Streak · ${streakStats.longestStreak} Day Record Streak\n\n`;
 
@@ -454,11 +596,11 @@ export function exportMarkdownSummary(
       md += `| **${h.name}** | ${goal} days | ${scheduleDesc} | ${completedThisMonth} days | ${progress} | ${currentStreak} days |\n`;
     });
 
-    md += `\n---\n*Report exported automatically from Habit Tracker Studio (Offline SQLite & Local Storage)*\n`;
+    md += `\n---\n*Report exported automatically from Zion Habit Tracker (Offline SQLite & Local Storage)*\n`;
 
-    downloadFile(md, `habit-tracker-report-${todayStr}.md`, 'text/markdown');
+    return await downloadFile(md, `zion-activity-report-${todayStr}.md`, 'text/markdown');
   } catch (err) {
     console.error('Failed to export Markdown summary:', err);
-    alert('An error occurred while exporting the Markdown report.');
+    return { success: false, message: 'An error occurred while exporting the Markdown report.' };
   }
 }

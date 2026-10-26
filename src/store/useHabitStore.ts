@@ -155,6 +155,11 @@ const LOCAL_STORAGE_KEY_SETTINGS = 'ht_settings';
 const LOCAL_STORAGE_KEY_USERS = 'ht_users';
 const LOCAL_STORAGE_KEY_CURRENT_USER_ID = 'ht_current_user_id';
 const LOCAL_STORAGE_KEY_HAS_ONBOARDED = 'ht_has_onboarded';
+const LOCAL_STORAGE_KEY_DEPENDENCIES = 'ht_dependencies';
+const LOCAL_STORAGE_KEY_WELLNESS_LOGS = 'ht_wellness_logs';
+const LOCAL_STORAGE_KEY_SKIP_REASONS = 'ht_skip_reasons';
+const LOCAL_STORAGE_KEY_SKILL_PROGRESS = 'ht_skill_progress';
+const LOCAL_STORAGE_KEY_TRIGGER_RULES = 'ht_trigger_rules';
 
 const getInitialAuthState = (): {
   currentUser: UserProfile | null;
@@ -374,10 +379,15 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
 
           syncTaskbarProgress(parsedHabits, checkinsMap, get().currentDate);
         } else {
-          // Browser fallback
+          // Browser & Android Capacitor fallback
           const rawHabits = localStorage.getItem(LOCAL_STORAGE_KEY_HABITS);
           const rawCheckins = localStorage.getItem(LOCAL_STORAGE_KEY_CHECKINS);
           const rawSettings = localStorage.getItem(LOCAL_STORAGE_KEY_SETTINGS);
+          const rawDependencies = localStorage.getItem(LOCAL_STORAGE_KEY_DEPENDENCIES);
+          const rawWellnessLogs = localStorage.getItem(LOCAL_STORAGE_KEY_WELLNESS_LOGS);
+          const rawSkipReasons = localStorage.getItem(LOCAL_STORAGE_KEY_SKIP_REASONS);
+          const rawSkillProgress = localStorage.getItem(LOCAL_STORAGE_KEY_SKILL_PROGRESS);
+          const rawTriggerRules = localStorage.getItem(LOCAL_STORAGE_KEY_TRIGGER_RULES);
 
           const parsedHabits: Habit[] = rawHabits ? JSON.parse(rawHabits) : [];
           const checkinsList: Checkin[] = rawCheckins ? JSON.parse(rawCheckins) : [];
@@ -387,14 +397,48 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           }
 
           const parsedSettings: AppSettings = rawSettings ? { ...DEFAULT_SETTINGS, ...JSON.parse(rawSettings) } : DEFAULT_SETTINGS;
+          const habitDependencies: HabitDependency[] = rawDependencies ? JSON.parse(rawDependencies) : [];
+
+          let wellnessLogs: Record<string, WellnessLog> = {};
+          if (rawWellnessLogs) {
+            try {
+              const parsed = JSON.parse(rawWellnessLogs);
+              if (Array.isArray(parsed)) {
+                for (const l of parsed) wellnessLogs[l.date] = l;
+              } else if (typeof parsed === 'object' && parsed !== null) {
+                wellnessLogs = parsed;
+              }
+            } catch {}
+          }
+
+          let skipReasons: Record<string, SkipReasonEntry> = {};
+          if (rawSkipReasons) {
+            try {
+              const parsed = JSON.parse(rawSkipReasons);
+              if (Array.isArray(parsed)) {
+                for (const s of parsed) skipReasons[`${s.habit_id}_${s.date}`] = s;
+              } else if (typeof parsed === 'object' && parsed !== null) {
+                skipReasons = parsed;
+              }
+            } catch {}
+          }
+
+          const skillProgress: Record<string, SkillProgress> = rawSkillProgress ? JSON.parse(rawSkillProgress) : {};
+          const triggerRules: TriggerRule[] = rawTriggerRules ? JSON.parse(rawTriggerRules) : [];
 
           document.documentElement.setAttribute('data-theme', parsedSettings.theme || 'dark');
+          sound.setEnabled(parsedSettings.sound_enabled ?? true);
 
           set({
             habits: parsedHabits,
             checkins: checkinsMap,
             allCheckinsList: checkinsList,
             settings: parsedSettings,
+            habitDependencies,
+            wellnessLogs,
+            skipReasons,
+            skillProgress,
+            triggerRules,
             currentUser: null,
             usersList,
             authScreen: initialAuthScreen,
@@ -934,9 +978,16 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         return JSON.stringify(raw, null, 2);
       }
       return JSON.stringify({
+        app: 'Zion Habit Tracker Studio',
+        version: '1.0.2',
+        exported_at: new Date().toISOString(),
         habits: get().habits,
         checkins: get().allCheckinsList,
         settings: get().settings,
+        dependencies: get().habitDependencies,
+        wellness_logs: Object.values(get().wellnessLogs),
+        skip_reasons: Object.values(get().skipReasons),
+        users: get().usersList,
       }, null, 2);
     },
 
@@ -948,9 +999,39 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           await get().init();
           return true;
         } else {
-          localStorage.setItem(LOCAL_STORAGE_KEY_HABITS, JSON.stringify(parsed.habits || []));
-          localStorage.setItem(LOCAL_STORAGE_KEY_CHECKINS, JSON.stringify(parsed.checkins || []));
-          localStorage.setItem(LOCAL_STORAGE_KEY_SETTINGS, JSON.stringify(parsed.settings || {}));
+          if (Array.isArray(parsed.habits)) {
+            localStorage.setItem(LOCAL_STORAGE_KEY_HABITS, JSON.stringify(parsed.habits));
+          }
+          if (Array.isArray(parsed.checkins)) {
+            localStorage.setItem(LOCAL_STORAGE_KEY_CHECKINS, JSON.stringify(parsed.checkins));
+          }
+          if (parsed.settings && typeof parsed.settings === 'object') {
+            localStorage.setItem(LOCAL_STORAGE_KEY_SETTINGS, JSON.stringify(parsed.settings));
+          }
+          if (Array.isArray(parsed.dependencies)) {
+            localStorage.setItem(LOCAL_STORAGE_KEY_DEPENDENCIES, JSON.stringify(parsed.dependencies));
+          }
+          if (parsed.wellness_logs) {
+            const wMap: Record<string, WellnessLog> = {};
+            if (Array.isArray(parsed.wellness_logs)) {
+              for (const w of parsed.wellness_logs) wMap[w.date] = w;
+            } else if (typeof parsed.wellness_logs === 'object') {
+              Object.assign(wMap, parsed.wellness_logs);
+            }
+            localStorage.setItem(LOCAL_STORAGE_KEY_WELLNESS_LOGS, JSON.stringify(wMap));
+          }
+          if (parsed.skip_reasons) {
+            const sMap: Record<string, SkipReasonEntry> = {};
+            if (Array.isArray(parsed.skip_reasons)) {
+              for (const s of parsed.skip_reasons) sMap[`${s.habit_id}_${s.date}`] = s;
+            } else if (typeof parsed.skip_reasons === 'object') {
+              Object.assign(sMap, parsed.skip_reasons);
+            }
+            localStorage.setItem(LOCAL_STORAGE_KEY_SKIP_REASONS, JSON.stringify(sMap));
+          }
+          if (Array.isArray(parsed.users) && parsed.users.length > 0) {
+            localStorage.setItem(LOCAL_STORAGE_KEY_USERS, JSON.stringify(parsed.users));
+          }
           await get().init();
           return true;
         }
@@ -967,6 +1048,11 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         localStorage.removeItem(LOCAL_STORAGE_KEY_HABITS);
         localStorage.removeItem(LOCAL_STORAGE_KEY_CHECKINS);
         localStorage.removeItem(LOCAL_STORAGE_KEY_SETTINGS);
+        localStorage.removeItem(LOCAL_STORAGE_KEY_DEPENDENCIES);
+        localStorage.removeItem(LOCAL_STORAGE_KEY_WELLNESS_LOGS);
+        localStorage.removeItem(LOCAL_STORAGE_KEY_SKIP_REASONS);
+        localStorage.removeItem(LOCAL_STORAGE_KEY_SKILL_PROGRESS);
+        localStorage.removeItem(LOCAL_STORAGE_KEY_TRIGGER_RULES);
       }
       set({
         habits: [],
@@ -986,6 +1072,11 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
       if (window.api) {
         const deps = await window.api.dependencies.getAll();
         set({ habitDependencies: deps });
+      } else {
+        try {
+          const raw = localStorage.getItem(LOCAL_STORAGE_KEY_DEPENDENCIES);
+          if (raw) set({ habitDependencies: JSON.parse(raw) });
+        } catch {}
       }
     },
 
@@ -995,16 +1086,15 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         const deps = await window.api.dependencies.getAll();
         set({ habitDependencies: deps });
       } else {
-        // LocalStorage fallback
         const newDep: HabitDependency = {
           habit_id: habitId,
           depends_on_id: dependsOnId,
           type,
           created_at: new Date().toISOString(),
         };
-        set((state) => ({
-          habitDependencies: [...state.habitDependencies, newDep],
-        }));
+        const next = [...get().habitDependencies, newDep];
+        localStorage.setItem(LOCAL_STORAGE_KEY_DEPENDENCIES, JSON.stringify(next));
+        set({ habitDependencies: next });
       }
     },
 
@@ -1014,11 +1104,11 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         const deps = await window.api.dependencies.getAll();
         set({ habitDependencies: deps });
       } else {
-        set((state) => ({
-          habitDependencies: state.habitDependencies.filter(
-            (d) => !(d.habit_id === habitId && d.depends_on_id === dependsOnId)
-          ),
-        }));
+        const next = get().habitDependencies.filter(
+          (d) => !(d.habit_id === habitId && d.depends_on_id === dependsOnId)
+        );
+        localStorage.setItem(LOCAL_STORAGE_KEY_DEPENDENCIES, JSON.stringify(next));
+        set({ habitDependencies: next });
       }
     },
 
@@ -1028,11 +1118,11 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         const deps = await window.api.dependencies.getAll();
         set({ habitDependencies: deps });
       } else {
-        set((state) => ({
-          habitDependencies: state.habitDependencies.filter(
-            (d) => d.habit_id !== habitId && d.depends_on_id !== habitId
-          ),
-        }));
+        const next = get().habitDependencies.filter(
+          (d) => d.habit_id !== habitId && d.depends_on_id !== habitId
+        );
+        localStorage.setItem(LOCAL_STORAGE_KEY_DEPENDENCIES, JSON.stringify(next));
+        set({ habitDependencies: next });
       }
     },
 
@@ -1045,6 +1135,11 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           logsMap[log.date] = log;
         }
         set({ wellnessLogs: logsMap });
+      } else {
+        try {
+          const raw = localStorage.getItem(LOCAL_STORAGE_KEY_WELLNESS_LOGS);
+          if (raw) set({ wellnessLogs: JSON.parse(raw) });
+        } catch {}
       }
     },
 
@@ -1066,9 +1161,9 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           note: log.note || '',
           created_at: new Date().toISOString(),
         };
-        set((state) => ({
-          wellnessLogs: { ...state.wellnessLogs, [log.date]: newLog },
-        }));
+        const next = { ...get().wellnessLogs, [log.date]: newLog };
+        localStorage.setItem(LOCAL_STORAGE_KEY_WELLNESS_LOGS, JSON.stringify(next));
+        set({ wellnessLogs: next });
       }
     },
 
@@ -1082,17 +1177,23 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         }
         set({ wellnessLogs: logsMap });
       } else {
-        set((state) => {
-          const newLogs = { ...state.wellnessLogs };
-          delete newLogs[date];
-          return { wellnessLogs: newLogs };
-        });
+        const next = { ...get().wellnessLogs };
+        delete next[date];
+        localStorage.setItem(LOCAL_STORAGE_KEY_WELLNESS_LOGS, JSON.stringify(next));
+        set({ wellnessLogs: next });
       }
     },
 
     // Skip Reasons actions
     loadSkipReasons: async () => {
-      // Skip reasons are loaded per habit/date on demand
+      if (window.api) {
+        // Loaded on demand
+      } else {
+        try {
+          const raw = localStorage.getItem(LOCAL_STORAGE_KEY_SKIP_REASONS);
+          if (raw) set({ skipReasons: JSON.parse(raw) });
+        } catch {}
+      }
     },
 
     upsertSkipReason: async (reason) => {
@@ -1113,9 +1214,9 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           note: reason.note || '',
           created_at: new Date().toISOString(),
         };
-        set((state) => ({
-          skipReasons: { ...state.skipReasons, [`${reason.habit_id}_${reason.date}`]: newReason },
-        }));
+        const next = { ...get().skipReasons, [`${reason.habit_id}_${reason.date}`]: newReason };
+        localStorage.setItem(LOCAL_STORAGE_KEY_SKIP_REASONS, JSON.stringify(next));
+        set({ skipReasons: next });
       }
     },
 
@@ -1123,16 +1224,15 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
       if (window.api) {
         await window.api.skipReasons.delete(id);
       } else {
-        set((state) => {
-          const newReasons = { ...state.skipReasons };
-          for (const key of Object.keys(newReasons)) {
-            if (newReasons[key].id === id) {
-              delete newReasons[key];
-              break;
-            }
+        const next = { ...get().skipReasons };
+        for (const key of Object.keys(next)) {
+          if (next[key].id === id) {
+            delete next[key];
+            break;
           }
-          return { skipReasons: newReasons };
-        });
+        }
+        localStorage.setItem(LOCAL_STORAGE_KEY_SKIP_REASONS, JSON.stringify(next));
+        set({ skipReasons: next });
       }
     },
 

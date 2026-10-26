@@ -4,6 +4,7 @@ import {
   checkGitHubUpdate,
   getDismissedVersion,
   setDismissedVersion,
+  openExternalUrl,
   UpdateInfo,
 } from '../../lib/updaterService';
 import { isAndroidApp } from '../../lib/reminders';
@@ -47,7 +48,7 @@ export const UpdateBanner: React.FC = () => {
 
   const handleDownload = () => {
     if (updateInfo.downloadUrl) {
-      window.open(updateInfo.downloadUrl, '_blank');
+      openExternalUrl(updateInfo.downloadUrl);
     }
   };
 

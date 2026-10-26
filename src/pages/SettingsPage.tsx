@@ -22,12 +22,20 @@ import {
   RefreshCw,
   ExternalLink,
   CheckCircle2,
+  Copy,
+  FileText,
+  X,
 } from 'lucide-react';
 import type { WeekStartDay, ClockFormat, DensityMode } from '../lib/types';
-import { exportCSVHistory, exportCSVMatrix, exportJSONBackup } from '../lib/exportUtils';
+import {
+  exportCSVHistory,
+  exportCSVMatrix,
+  exportJSONBackup,
+  copyBackupToClipboard,
+} from '../lib/exportUtils';
 import { sound } from '../lib/audio';
 import { APP_VERSION, GITHUB_RELEASES_URL } from '../lib/constants';
-import { checkGitHubUpdate, UpdateInfo } from '../lib/updaterService';
+import { checkGitHubUpdate, openExternalUrl, UpdateInfo } from '../lib/updaterService';
 import {
   isAndroidApp,
   showAndroidTestReminder,
@@ -42,13 +50,21 @@ export const SettingsPage: React.FC = () => {
   const habits = useHabitStore((s) => s.habits);
   const checkins = useHabitStore((s) => s.checkins);
   const allCheckinsList = useHabitStore((s) => s.allCheckinsList);
+  const habitDependencies = useHabitStore((s) => s.habitDependencies);
+  const wellnessLogs = useHabitStore((s) => s.wellnessLogs);
+  const skipReasons = useHabitStore((s) => s.skipReasons);
+  const usersList = useHabitStore((s) => s.usersList);
   const currentDate = useHabitStore((s) => s.currentDate);
 
   const [notificationStatus, setNotificationStatus] = useState<string>('');
   const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [pasteModalOpen, setPasteModalOpen] = useState(false);
+  const [pasteContent, setPasteContent] = useState('');
+  const [pasteStatus, setPasteStatus] = useState<string | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateResult, setUpdateResult] = useState<UpdateInfo | null>(null);
   const [updateError, setUpdateError] = useState<string | null>(null);
+  const [copiedLink, setCopiedLink] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const currentTheme = settings.theme || 'dark';
@@ -80,16 +96,38 @@ export const SettingsPage: React.FC = () => {
     };
   }, [isAndroid, settings.reminder_time]);
 
-  const handleExportJSON = () => {
-    exportJSONBackup(habits, checkins, allCheckinsList, settings, currentDate);
+  const handleExportJSON = async () => {
+    const res = await exportJSONBackup(habits, checkins, allCheckinsList, settings, currentDate, {
+      dependencies: habitDependencies,
+      wellnessLogs,
+      skipReasons,
+      usersList,
+    });
+    setNotificationStatus(res.message);
+    setTimeout(() => setNotificationStatus(''), 4500);
   };
 
-  const handleExportCSV = () => {
-    exportCSVHistory(habits, checkins, allCheckinsList, settings, currentDate);
+  const handleCopyJSONBackup = async () => {
+    const res = await copyBackupToClipboard(habits, checkins, allCheckinsList, settings, currentDate, {
+      dependencies: habitDependencies,
+      wellnessLogs,
+      skipReasons,
+      usersList,
+    });
+    setNotificationStatus(res.message);
+    setTimeout(() => setNotificationStatus(''), 4500);
   };
 
-  const handleExportMatrix = () => {
-    exportCSVMatrix(habits, checkins, allCheckinsList, settings, currentDate);
+  const handleExportCSV = async () => {
+    const res = await exportCSVHistory(habits, checkins, allCheckinsList, settings, currentDate);
+    setNotificationStatus(res.message);
+    setTimeout(() => setNotificationStatus(''), 4500);
+  };
+
+  const handleExportMatrix = async () => {
+    const res = await exportCSVMatrix(habits, checkins, allCheckinsList, settings, currentDate);
+    setNotificationStatus(res.message);
+    setTimeout(() => setNotificationStatus(''), 4500);
   };
 
   const handleImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -102,14 +140,39 @@ export const SettingsPage: React.FC = () => {
       if (content) {
         const success = await importData(content);
         if (success) {
-          alert('Data imported successfully!');
+          setNotificationStatus('Backup data imported and restored successfully!');
         } else {
-          alert('Failed to import data. Please ensure it is a valid Habit Tracker JSON backup.');
+          setNotificationStatus('Failed to import data. Please ensure it is a valid Zion backup JSON.');
         }
+        setTimeout(() => setNotificationStatus(''), 4500);
       }
     };
     reader.readAsText(file);
     e.target.value = '';
+  };
+
+  const handlePasteRestore = async () => {
+    if (!pasteContent.trim()) {
+      setPasteStatus('Please paste your backup JSON text first.');
+      return;
+    }
+    try {
+      const success = await importData(pasteContent.trim());
+      if (success) {
+        setPasteStatus('Backup restored successfully!');
+        setNotificationStatus('Data restored successfully!');
+        setTimeout(() => {
+          setPasteModalOpen(false);
+          setPasteContent('');
+          setPasteStatus(null);
+          setNotificationStatus('');
+        }, 1200);
+      } else {
+        setPasteStatus('Invalid JSON backup structure. Please ensure it is valid Zion backup text.');
+      }
+    } catch {
+      setPasteStatus('Failed to parse JSON. Please check for formatting errors.');
+    }
   };
 
   const handleTestNotification = async () => {
@@ -586,18 +649,18 @@ export const SettingsPage: React.FC = () => {
             )}
 
             {/* Scheduled Daily Reminder */}
-            <div className="flex items-center justify-between p-3.5 rounded-[12px] border" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
-              <div className="pr-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-[12px] border gap-3" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
+              <div className="pr-0 sm:pr-3">
                 <span style={{ color: 'var(--text-primary)' }} className="text-[14px] font-semibold block">
                   Daily Reminder
                 </span>
-                <span style={{ color: 'var(--text-secondary)' }} className="text-[12px]">
+                <span style={{ color: 'var(--text-secondary)' }} className="text-[12px] leading-relaxed block mt-0.5">
                   {isAndroid
                     ? 'Get a daily Android notification. Stop dismisses only that reminder.'
                     : 'Sends a native OS notification at your chosen hour. Stop dismisses only that reminder.'}
                 </span>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 self-start sm:self-center flex-shrink-0">
                 <input
                   type="time"
                   value={settings.reminder_time}
@@ -683,7 +746,7 @@ export const SettingsPage: React.FC = () => {
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3.5">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             {/* Export JSON */}
             <button
               type="button"
@@ -692,14 +755,34 @@ export const SettingsPage: React.FC = () => {
                 backgroundColor: 'var(--bg-surface)',
                 borderColor: 'var(--border-subtle)',
               }}
-              className="p-4 rounded-[14px] border flex flex-col items-center justify-center text-center gap-2 transition-colors hover:bg-[var(--bg-surface-hover)] cursor-pointer group"
+              className="p-3.5 sm:p-4 rounded-[14px] border flex flex-col items-center justify-center text-center gap-1.5 transition-colors hover:bg-[var(--bg-surface-hover)] cursor-pointer group touch-manipulation"
             >
               <Download size={22} style={{ color: 'var(--accent-primary)' }} className="group-hover:scale-110 transition-transform" />
-              <span style={{ color: 'var(--text-primary)' }} className="text-[13.5px] font-bold">
-                Export Backup (JSON)
+              <span style={{ color: 'var(--text-primary)' }} className="text-[13px] font-bold">
+                Export JSON
               </span>
-              <span style={{ color: 'var(--text-secondary)' }} className="text-[11px]">
-                Full history and settings
+              <span style={{ color: 'var(--text-secondary)' }} className="text-[10.5px]">
+                Full backup file
+              </span>
+            </button>
+
+            {/* Copy Backup JSON to Clipboard */}
+            <button
+              type="button"
+              onClick={handleCopyJSONBackup}
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-subtle)',
+              }}
+              className="p-3.5 sm:p-4 rounded-[14px] border flex flex-col items-center justify-center text-center gap-1.5 transition-colors hover:bg-[var(--bg-surface-hover)] cursor-pointer group touch-manipulation"
+              title="Copy entire backup JSON to clipboard"
+            >
+              <Copy size={22} className="text-indigo-400 group-hover:scale-110 transition-transform" />
+              <span style={{ color: 'var(--text-primary)' }} className="text-[13px] font-bold">
+                Copy JSON
+              </span>
+              <span style={{ color: 'var(--text-secondary)' }} className="text-[10.5px]">
+                Copy to clipboard
               </span>
             </button>
 
@@ -711,14 +794,14 @@ export const SettingsPage: React.FC = () => {
                 backgroundColor: 'var(--bg-surface)',
                 borderColor: 'var(--border-subtle)',
               }}
-              className="p-4 rounded-[14px] border flex flex-col items-center justify-center text-center gap-2 transition-colors hover:bg-[var(--bg-surface-hover)] cursor-pointer group"
+              className="p-3.5 sm:p-4 rounded-[14px] border flex flex-col items-center justify-center text-center gap-1.5 transition-colors hover:bg-[var(--bg-surface-hover)] cursor-pointer group touch-manipulation"
             >
               <Table size={22} className="text-emerald-400 group-hover:scale-110 transition-transform" />
-              <span style={{ color: 'var(--text-primary)' }} className="text-[13.5px] font-bold">
-                Activity Ledger (CSV)
+              <span style={{ color: 'var(--text-primary)' }} className="text-[13px] font-bold">
+                Ledger (CSV)
               </span>
-              <span style={{ color: 'var(--text-secondary)' }} className="text-[11px]">
-                Daily history with streaks & goals
+              <span style={{ color: 'var(--text-secondary)' }} className="text-[10.5px]">
+                Daily history
               </span>
             </button>
 
@@ -730,14 +813,14 @@ export const SettingsPage: React.FC = () => {
                 backgroundColor: 'var(--bg-surface)',
                 borderColor: 'var(--border-subtle)',
               }}
-              className="p-4 rounded-[14px] border flex flex-col items-center justify-center text-center gap-2 transition-colors hover:bg-[var(--bg-surface-hover)] cursor-pointer group"
+              className="p-3.5 sm:p-4 rounded-[14px] border flex flex-col items-center justify-center text-center gap-1.5 transition-colors hover:bg-[var(--bg-surface-hover)] cursor-pointer group touch-manipulation"
             >
               <LayoutGrid size={22} className="text-teal-400 group-hover:scale-110 transition-transform" />
-              <span style={{ color: 'var(--text-primary)' }} className="text-[13.5px] font-bold">
-                Habit Matrix (CSV)
+              <span style={{ color: 'var(--text-primary)' }} className="text-[13px] font-bold">
+                Matrix (CSV)
               </span>
-              <span style={{ color: 'var(--text-secondary)' }} className="text-[11px]">
-                Pivot table with habit columns
+              <span style={{ color: 'var(--text-secondary)' }} className="text-[10.5px]">
+                Pivot table grid
               </span>
             </button>
 
@@ -749,41 +832,59 @@ export const SettingsPage: React.FC = () => {
                 backgroundColor: 'var(--bg-surface)',
                 borderColor: 'var(--border-subtle)',
               }}
-              className="p-4 rounded-[14px] border flex flex-col items-center justify-center text-center gap-2 transition-colors hover:bg-[var(--bg-surface-hover)] cursor-pointer group"
+              className="p-3.5 sm:p-4 rounded-[14px] border flex flex-col items-center justify-center text-center gap-1.5 transition-colors hover:bg-[var(--bg-surface-hover)] cursor-pointer group touch-manipulation"
             >
               <Upload size={22} className="text-[#f59e0b] group-hover:scale-110 transition-transform" />
-              <span style={{ color: 'var(--text-primary)' }} className="text-[13.5px] font-bold">
-                Import Backup
+              <span style={{ color: 'var(--text-primary)' }} className="text-[13px] font-bold">
+                Import File
               </span>
-              <span style={{ color: 'var(--text-secondary)' }} className="text-[11px]">
-                Restore from JSON file
+              <span style={{ color: 'var(--text-secondary)' }} className="text-[10.5px]">
+                Restore .json
               </span>
             </button>
             <input
               type="file"
               ref={fileInputRef}
-              accept=".json"
+              accept=".json,application/json,text/plain,*/*"
               onChange={handleImportFile}
               className="hidden"
             />
 
-            {/* Reset All Data */}
+            {/* Paste JSON to Restore (100% Guaranteed Android Restore) */}
+            <button
+              type="button"
+              onClick={() => {
+                setPasteContent('');
+                setPasteStatus(null);
+                setPasteModalOpen(true);
+              }}
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-subtle)',
+              }}
+              className="p-3.5 sm:p-4 rounded-[14px] border flex flex-col items-center justify-center text-center gap-1.5 transition-colors hover:bg-[var(--bg-surface-hover)] cursor-pointer group touch-manipulation"
+            >
+              <FileText size={22} className="text-cyan-400 group-hover:scale-110 transition-transform" />
+              <span style={{ color: 'var(--text-primary)' }} className="text-[13px] font-bold">
+                Paste JSON
+              </span>
+              <span style={{ color: 'var(--text-secondary)' }} className="text-[10.5px]">
+                Text restore
+              </span>
+            </button>
+          </div>
+
+          <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between">
+            <span style={{ color: 'var(--text-muted)' }} className="text-xs">
+              Danger Zone
+            </span>
             <button
               type="button"
               onClick={() => setResetModalOpen(true)}
-              style={{
-                backgroundColor: 'rgba(244, 63, 94, 0.08)',
-                borderColor: 'rgba(244, 63, 94, 0.25)',
-              }}
-              className="p-4 rounded-[14px] border flex flex-col items-center justify-center text-center gap-2 transition-colors hover:bg-[rgba(244,63,94,0.16)] cursor-pointer group"
+              className="text-xs font-semibold text-rose-400 hover:text-rose-300 transition-colors flex items-center gap-1.5 cursor-pointer touch-manipulation px-3 py-1.5 rounded-lg border border-rose-500/20 bg-rose-500/10"
             >
-              <RotateCcw size={22} style={{ color: 'var(--status-danger)' }} className="group-hover:rotate-180 transition-transform duration-300" />
-              <span style={{ color: 'var(--status-danger)' }} className="text-[13.5px] font-bold">
-                Reset All Data
-              </span>
-              <span style={{ color: 'var(--text-secondary)' }} className="text-[11px]">
-                Permanently clear database
-              </span>
+              <RotateCcw size={13} />
+              <span>Reset All Data</span>
             </button>
           </div>
         </Card>
@@ -837,7 +938,7 @@ export const SettingsPage: React.FC = () => {
                 borderColor: 'var(--border-subtle)',
                 color: 'var(--text-primary)',
               }}
-              className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold border hover:border-[var(--border-medium)] hover:bg-[var(--bg-surface-hover)] transition-all cursor-pointer disabled:opacity-50 flex-shrink-0"
+              className="flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-lg text-xs font-semibold border hover:border-[var(--border-medium)] hover:bg-[var(--bg-surface-hover)] transition-all cursor-pointer disabled:opacity-50 flex-shrink-0 touch-manipulation"
             >
               <RefreshCw size={13} className={checkingUpdate ? 'animate-spin text-[var(--accent-primary)]' : ''} />
               <span>{checkingUpdate ? 'Checking GitHub...' : 'Check for Updates'}</span>
@@ -879,30 +980,46 @@ export const SettingsPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {updateResult.hasUpdate && (
                   <button
                     type="button"
                     onClick={() => {
-                      if (updateResult.downloadUrl) window.open(updateResult.downloadUrl, '_blank');
+                      if (updateResult.downloadUrl) openExternalUrl(updateResult.downloadUrl);
                     }}
                     style={{ backgroundColor: 'var(--accent-primary)', color: '#ffffff' }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-bold hover:brightness-110 cursor-pointer"
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-bold hover:brightness-110 cursor-pointer touch-manipulation"
                   >
                     <Download size={13} />
-                    <span>Download</span>
+                    <span>{isAndroid && updateResult.downloadType === 'apk' ? 'Download APK' : 'Download'}</span>
                   </button>
                 )}
-                <a
-                  href={GITHUB_RELEASES_URL}
-                  target="_blank"
-                  rel="noreferrer"
+                <button
+                  type="button"
+                  onClick={() => openExternalUrl(updateResult.releaseUrl || GITHUB_RELEASES_URL)}
                   style={{ color: 'var(--text-muted)' }}
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] transition-colors cursor-pointer touch-manipulation"
                 >
                   <span>Releases</span>
                   <ExternalLink size={11} />
-                </a>
+                </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const url = updateResult.downloadUrl || updateResult.releaseUrl || GITHUB_RELEASES_URL;
+                    try {
+                      await navigator.clipboard.writeText(url);
+                      setCopiedLink(true);
+                      setTimeout(() => setCopiedLink(false), 2500);
+                    } catch {}
+                  }}
+                  style={{ color: 'var(--text-muted)' }}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg border border-[var(--border-subtle)] hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] transition-colors cursor-pointer touch-manipulation"
+                  title="Copy release link"
+                >
+                  {copiedLink ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                  <span>{copiedLink ? 'Copied' : 'Copy Link'}</span>
+                </button>
               </div>
             </div>
           )}
@@ -915,18 +1032,106 @@ export const SettingsPage: React.FC = () => {
 
           <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between text-[11px] text-[var(--text-dim)]">
             <span>Repository: github.com/yvvsatyanarayana-dev/Zion-Habit-Tracker</span>
-            <a
-              href={GITHUB_RELEASES_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="hover:text-[var(--accent-primary)] hover:underline flex items-center gap-1"
+            <button
+              type="button"
+              onClick={() => openExternalUrl(GITHUB_RELEASES_URL)}
+              className="hover:text-[var(--accent-primary)] hover:underline flex items-center gap-1 cursor-pointer"
             >
               <span>View GitHub Releases</span>
               <ExternalLink size={10} />
-            </a>
+            </button>
           </div>
         </Card>
       </div>
+
+      {/* Paste JSON Backup to Restore Modal */}
+      {pasteModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-[8px] animate-in fade-in duration-200">
+          <div
+            style={{
+              backgroundColor: 'var(--bg-surface-elevated)',
+              borderColor: 'var(--border-subtle)',
+              boxShadow: 'var(--shadow-dropdown)',
+            }}
+            className="border max-w-lg w-full rounded-[20px] p-5 sm:p-6 text-left flex flex-col gap-4 animate-in zoom-in-95 duration-150"
+          >
+            <div className="flex items-center justify-between pb-2 border-b border-[var(--border-subtle)]">
+              <div className="flex items-center gap-2">
+                <FileText size={18} className="text-cyan-400" />
+                <h3 className="font-bold text-[16px] text-[var(--text-primary)]">
+                  Restore Backup from Text
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPasteModalOpen(false)}
+                className="w-8 h-8 rounded-lg flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <p style={{ color: 'var(--text-secondary)' }} className="text-xs leading-relaxed">
+              Paste your Zion JSON backup text into the box below and tap <strong>Restore Now</strong>. This restores all your habits, check-ins, settings, and streaks without needing a file picker.
+            </p>
+
+            <textarea
+              value={pasteContent}
+              onChange={(e) => {
+                setPasteContent(e.target.value);
+                setPasteStatus(null);
+              }}
+              placeholder='Paste JSON backup here (e.g. {"app": "Zion Habit Tracker Studio", "habits": [...], ...})'
+              rows={8}
+              style={{
+                backgroundColor: 'var(--bg-surface)',
+                borderColor: 'var(--border-medium)',
+                color: 'var(--text-primary)',
+              }}
+              className="w-full text-xs font-mono p-3 rounded-xl border outline-none resize-none focus:border-[var(--accent-primary)] transition-colors"
+            />
+
+            {pasteStatus && (
+              <div
+                className={`p-2.5 rounded-lg text-xs font-semibold ${
+                  pasteStatus.includes('success')
+                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                }`}
+              >
+                {pasteStatus}
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2.5 pt-1">
+              <button
+                type="button"
+                onClick={() => setPasteModalOpen(false)}
+                style={{
+                  backgroundColor: 'var(--bg-surface)',
+                  borderColor: 'var(--border-subtle)',
+                  color: 'var(--text-secondary)',
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-semibold border hover:text-[var(--text-primary)] cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handlePasteRestore}
+                style={{
+                  backgroundColor: 'var(--btn-primary-bg)',
+                  color: 'var(--btn-primary-text)',
+                  boxShadow: 'var(--btn-primary-shadow)',
+                }}
+                className="px-4 py-2 rounded-xl text-xs font-bold hover:brightness-105 active:scale-95 transition-all cursor-pointer"
+              >
+                Restore Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Reset Confirmation Modal */}
       {resetModalOpen && (
