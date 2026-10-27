@@ -155,3 +155,97 @@ export interface HabitReplayState {
   checkins: Record<string, import('./types').Checkin>;
   wellnessLog?: WellnessLog;
 }
+
+// ───────────────────────────────────────────────
+// Feature 1: Routine Flow Runner & Habit Stacking
+// ───────────────────────────────────────────────
+export interface RoutineStep {
+  id: string;
+  habit_id: string;
+  duration_minutes: number; // e.g. 5, 10, or 0 for instant
+  notes?: string;
+}
+
+export interface RoutineStack {
+  id: string;
+  title: string;
+  description: string;
+  emoji: string;
+  color: string;
+  time_of_day: 'morning' | 'afternoon' | 'evening' | 'anytime';
+  steps: RoutineStep[];
+  created_at: string;
+}
+
+// ───────────────────────────────────────────────
+// Feature 2: "Never Miss Twice" Streak Shields & Recovery Quests
+// ───────────────────────────────────────────────
+export interface ShieldEvent {
+  id: string;
+  date: string; // YYYY-MM-DD that was protected/frozen
+  reason: 'auto_freeze' | 'manual_forgiveness';
+  note?: string;
+  created_at: string;
+}
+
+export interface ResurrectionQuest {
+  active: boolean;
+  lost_streak_count: number;
+  started_date: string; // YYYY-MM-DD
+  required_days: number; // default 3 days
+  completed_dates: string[]; // YYYY-MM-DD
+  restored: boolean;
+}
+
+export interface StreakShieldState {
+  available_shields: number; // default 2, max 3
+  shield_events: ShieldEvent[];
+  resurrection_quest: ResurrectionQuest | null;
+}
+
+// ───────────────────────────────────────────────
+// Feature 3: Smart Habit Correlation Engine & Pattern Insights
+// ───────────────────────────────────────────────
+export interface HabitCorrelation {
+  source_habit_id: string;
+  source_habit_name: string;
+  source_habit_color: string;
+  target_habit_id: string;
+  target_habit_name: string;
+  target_habit_color: string;
+  probability_with: number; // e.g. 0.85
+  probability_without: number; // e.g. 0.35
+  lift_percentage: number; // e.g. +62%
+  sample_size: number;
+  insight_text: string;
+}
+
+export interface WellnessCorrelation {
+  habit_id: string;
+  habit_name: string;
+  habit_color: string;
+  metric: 'energy' | 'mood';
+  average_with: number;
+  average_without: number;
+  difference: number; // e.g. +1.3 points
+  insight_text: string;
+}
+
+export interface DangerZoneAlert {
+  habit_id: string;
+  habit_name: string;
+  habit_color: string;
+  weekday: number; // 0=Sun, ..., 6=Sat
+  weekday_name: string;
+  failure_rate: number; // e.g. 75%
+  miss_count: number;
+  sample_weeks: number;
+  suggestion: string;
+}
+
+export interface SmartInsightsReport {
+  correlations: HabitCorrelation[];
+  wellness_correlations: WellnessCorrelation[];
+  danger_zones: DangerZoneAlert[];
+  golden_habit: { habit: Habit; boost_percentage: number; synergy_count: number } | null;
+}

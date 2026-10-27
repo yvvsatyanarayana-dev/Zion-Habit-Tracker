@@ -39,4 +39,34 @@ describe('Streak Calculations', () => {
     expect(stats.totalCheckinsCount).toBe(3);
     expect(stats.perfectDaysCount).toBe(3);
   });
+
+  it('preserves streak when a missed day is protected by Streak Shield', () => {
+    const habit: Habit = {
+      id: 'h1',
+      name: 'Reading',
+      emoji: '📚',
+      color: '#3B82F6',
+      monthly_goal: 30,
+      schedule_days: [0, 1, 2, 3, 4, 5, 6],
+      sort_order: 0,
+      archived: false,
+      created_at: '2026-10-01T00:00:00Z',
+    };
+
+    // Day 7 is completed, Day 6 is missed, Day 5 is completed
+    const checkins: Checkin[] = [
+      { id: 'c1', habit_id: 'h1', date: '2026-10-07', completed: true, note: '', updated_at: '' },
+      { id: 'c3', habit_id: 'h1', date: '2026-10-05', completed: true, note: '', updated_at: '' },
+    ];
+
+    // Without shield: streak is 1
+    const unshieldedStats = computeStreakStats([habit], checkins, 50, dummyDate);
+    expect(unshieldedStats.currentStreak).toBe(1);
+
+    // With shield on 2026-10-06: streak is preserved across the gap to 3!
+    const shieldDates = new Set(['2026-10-06']);
+    const shieldedStats = computeStreakStats([habit], checkins, 50, dummyDate, shieldDates);
+    expect(shieldedStats.currentStreak).toBe(3);
+    expect(shieldedStats.longestStreak).toBe(3);
+  });
 });

@@ -157,13 +157,14 @@ export function computeStreakStats(
   habits: Habit[],
   allCheckins: Checkin[],
   streakThresholdPercent: number,
-  today: Date = new Date()
+  today: Date = new Date(),
+  shieldDates?: Set<string>
 ): {
   currentStreak: number;
   longestStreak: number;
   perfectDaysCount: number;
   totalCheckinsCount: number;
-  currentWeekDays: { dateStr: string; weekdayLabel: string; isCompleted: boolean; isToday: boolean }[];
+  currentWeekDays: { dateStr: string; weekdayLabel: string; isCompleted: boolean; isToday: boolean; isShielded?: boolean }[];
 } {
   const activeHabits = habits.filter((h) => !h.archived);
   const totalCheckinsCount = allCheckins.filter((c) => c.completed).length;
@@ -179,6 +180,7 @@ export function computeStreakStats(
         weekdayLabel: ['M', 'T', 'W', 'T', 'F', 'S', 'S'][i],
         isCompleted: isCompletedFn(d),
         isToday: dateStr === formatLocalDate(today),
+        isShielded: Boolean(shieldDates && shieldDates.has(dateStr)),
       };
     });
   };
@@ -215,9 +217,15 @@ export function computeStreakStats(
     }
   }
 
-  // Helper to check if a day qualifies as a streak day
+  // Helper to check if a day qualifies as a streak day (completed OR protected by Streak Shield)
   const isDateStreakDay = (date: Date): boolean => {
     const dateStr = formatLocalDate(date);
+
+    // Streak Shield protection: if date is shielded, preserve streak
+    if (shieldDates && shieldDates.has(dateStr)) {
+      return true;
+    }
+
     const completedSet = checkinsByDate.get(dateStr);
     const wday = date.getDay();
     const scheduled = activeHabits.filter((h) => isHabitScheduledOnDay(h, wday));

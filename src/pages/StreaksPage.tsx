@@ -2,6 +2,7 @@ import React from 'react';
 import { Header } from '../components/ui/Header';
 import { AchievementsView } from '../components/streaks/AchievementsView';
 import { StreakLeaderboard } from '../components/streaks/StreakLeaderboard';
+import { StreakShieldCard } from '../components/streaks/StreakShieldCard';
 import { Card } from '../components/ui/Card';
 import { useHabitStore } from '../store/useHabitStore';
 import { Flame } from 'lucide-react';
@@ -34,6 +35,7 @@ export const StreaksPage: React.FC = () => {
         </Card>
       ) : (
         <>
+          <StreakShieldCard />
           <AchievementsView />
           <StreakLeaderboard />
         </>

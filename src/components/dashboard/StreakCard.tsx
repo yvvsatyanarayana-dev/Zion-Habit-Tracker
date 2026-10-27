@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Card } from '../ui/Card';
-import { Check, Flame } from 'lucide-react';
+import { Check, Flame, Shield } from 'lucide-react';
 import { computeStreakStats } from '../../lib/statsUtils';
 import { useHabitStore } from '../../store/useHabitStore';
 
@@ -9,12 +9,18 @@ export const StreakCard: React.FC = () => {
   const allCheckinsList = useHabitStore((s) => s.allCheckinsList);
   const streakThreshold = useHabitStore((s) => s.settings.streak_threshold);
   const currentDate = useHabitStore((s) => s.currentDate);
+  const streakShields = useHabitStore((s) => s.streakShields);
+
+  const shieldDates = useMemo(() => {
+    return new Set(streakShields?.shield_events?.map((e) => e.date) || []);
+  }, [streakShields]);
 
   const stats = computeStreakStats(
     habits,
     allCheckinsList,
     streakThreshold,
-    currentDate
+    currentDate,
+    shieldDates
   );
 
   return (
@@ -78,20 +84,25 @@ export const StreakCard: React.FC = () => {
 
                 <div
                   style={{
-                    backgroundColor: day.isCompleted ? '#f59e0b' : 'transparent',
-                    borderColor: day.isCompleted ? '#f59e0b' : 'var(--border-medium)',
+                    backgroundColor: day.isCompleted ? '#f59e0b' : day.isShielded ? 'rgba(6, 182, 212, 0.2)' : 'transparent',
+                    borderColor: day.isCompleted ? '#f59e0b' : day.isShielded ? '#06b6d4' : 'var(--border-medium)',
                   }}
                   className={`w-7.5 h-7.5 rounded-full flex items-center justify-center transition-all ${
                     day.isToday ? 'ring-2 ring-[#f59e0b] ring-offset-2 ring-offset-[var(--bg-surface-elevated)]' : ''
                   } ${
                     day.isCompleted
                       ? 'text-black shadow-sm'
+                      : day.isShielded
+                      ? 'text-cyan-300 border-2'
                       : 'border-2 text-transparent'
                   }`}
-                  title={`${day.dateStr}: ${day.isCompleted ? 'Streak Achieved' : 'Incomplete'}`}
+                  title={`${day.dateStr}: ${day.isCompleted ? 'Streak Achieved' : day.isShielded ? 'Protected by Streak Shield' : 'Incomplete'}`}
                 >
                   {day.isCompleted && (
                     <Check size={14} strokeWidth={3.5} color="#000000" />
+                  )}
+                  {!day.isCompleted && day.isShielded && (
+                    <Shield size={12} className="text-cyan-400 fill-cyan-400/30" />
                   )}
                 </div>
               </div>

@@ -4,6 +4,7 @@ import { YearHeatmap } from '../components/analytics/YearHeatmap';
 import { WeekdayPerformance } from '../components/analytics/WeekdayPerformance';
 import { HabitTrends } from '../components/analytics/HabitTrends';
 import { BestWorstHabits } from '../components/analytics/BestWorstHabits';
+import { HabitCorrelationCard } from '../components/analytics/HabitCorrelationCard';
 import { Card } from '../components/ui/Card';
 import { useHabitStore } from '../store/useHabitStore';
 import { BarChart3, Award } from 'lucide-react';
@@ -151,6 +152,9 @@ export const AnalyticsPage: React.FC = () => {
               </span>
             </Card>
           </div>
+
+          {/* Smart Offline Correlation Engine & Pattern Insights */}
+          <HabitCorrelationCard />
 
           {/* 365-Day Heatmap */}
           <YearHeatmap />

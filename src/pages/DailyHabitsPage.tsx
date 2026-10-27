@@ -7,7 +7,7 @@ import { useHabitStore } from '../store/useHabitStore';
 import { HabitChainModal } from '../components/ui/HabitChainModal';
 import { HabitReplaySlider } from '../components/ui/HabitReplaySlider';
 import { WellnessLogEntry } from '../components/ui/WellnessLogEntry';
-import { Plus, GitBranch, RotateCcw, Heart, Zap, Sparkles } from 'lucide-react';
+import { Plus, GitBranch, RotateCcw, Heart, Zap, Sparkles, Layers } from 'lucide-react';
 import { clsx } from 'clsx';
 import { formatLocalDate } from '../lib/dateUtils';
 
@@ -18,6 +18,7 @@ export const DailyHabitsPage: React.FC = () => {
   const currentDate = useHabitStore((s) => s.currentDate);
   const habitDependencies = useHabitStore((s) => s.habitDependencies);
   const wellnessLogs = useHabitStore((s) => s.wellnessLogs);
+  const setRoutineManagerOpen = useHabitStore((s) => s.setRoutineManagerOpen);
 
   const [showChains, setShowChains] = useState(false);
   const [showReplay, setShowReplay] = useState(false);
@@ -60,6 +61,22 @@ export const DailyHabitsPage: React.FC = () => {
             >
               <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
               <span>New Habit</span>
+            </button>
+
+            {/* Routine Stacks & Flow Runner Button */}
+            <button
+              onClick={() => setRoutineManagerOpen(true)}
+              style={{
+                backgroundColor: 'rgba(59, 130, 246, 0.12)',
+                borderColor: 'rgba(59, 130, 246, 0.3)',
+                color: '#60a5fa',
+              }}
+              className="h-8 px-2.5 sm:px-3 rounded-[8px] border text-xs font-bold flex items-center gap-1.5 transition-all hover:bg-blue-600/20 active:scale-95 cursor-pointer touch-manipulation"
+              aria-label="Routine Flows"
+              title="Launch Morning/Evening Guided Routine Flows"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>Routine Flow</span>
             </button>
 
             {/* Habit Chains Button */}

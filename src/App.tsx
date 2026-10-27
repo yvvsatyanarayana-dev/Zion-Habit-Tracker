@@ -19,6 +19,8 @@ import { useHabitStore } from './store/useHabitStore';
 import { useKeyboardShortcuts } from './hooks/useKeyboardShortcuts';
 import { MobileHeader, MobileNavigation } from './components/ui/MobileChrome';
 import { UpdateBanner } from './components/ui/UpdateBanner';
+import { RoutineRunnerModal } from './components/routines/RoutineRunnerModal';
+import { RoutineManagerModal } from './components/routines/RoutineManagerModal';
 import {
   DAILY_REMINDER_STOP_ACTION,
   dismissAndroidReminder,
@@ -197,6 +199,8 @@ export const App: React.FC = () => {
       <CommandPalette />
       <ReflectionModal />
       <WeeklyReviewModal />
+      <RoutineRunnerModal />
+      <RoutineManagerModal />
       <UpdateBanner />
     </div>
   );

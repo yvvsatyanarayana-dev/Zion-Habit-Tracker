@@ -1,9 +1,25 @@
 import { create } from 'zustand';
-import type { Habit, Checkin, AppSettings, TabType, UserProfile, CheckinMood, HabitDependency, WellnessLog, SkipReasonEntry, SkillProgress, TriggerRule } from '../lib/types';
+import type {
+  Habit,
+  Checkin,
+  AppSettings,
+  TabType,
+  UserProfile,
+  CheckinMood,
+  HabitDependency,
+  WellnessLog,
+  SkipReasonEntry,
+  SkillProgress,
+  TriggerRule,
+  RoutineStack,
+  StreakShieldState,
+  ShieldEvent,
+  ResurrectionQuest,
+} from '../lib/types';
 import { DEFAULT_SETTINGS, HABIT_PALETTE } from '../lib/constants';
 import { formatLocalDate } from '../lib/dateUtils';
-import { isHabitScheduledOnDay } from '../lib/statsUtils';
-import { sound } from '../lib/audio';
+import { isHabitScheduledOnDay, computeStreakStats } from '../lib/statsUtils';
+import { sound, playShieldProtect } from '../lib/audio';
 import type { ElectronAPI } from '../../electron/preload';
 
 declare global {
@@ -146,6 +162,22 @@ interface HabitStoreState {
   createTriggerRule: (rule: { id: string; habit_id: string; type: string; config: Record<string, unknown>; enabled?: boolean }) => Promise<void>;
   updateTriggerRule: (id: string, updates: { type?: string; config?: Record<string, unknown>; enabled?: boolean }) => Promise<void>;
   deleteTriggerRule: (id: string) => Promise<void>;
+
+  // Feature 1: Routine Flow Runner & Habit Stacking
+  routines: RoutineStack[];
+  activeRoutineRunner: RoutineStack | null;
+  routineManagerOpen: boolean;
+  startRoutineRunner: (routine: RoutineStack) => void;
+  closeRoutineRunner: () => void;
+  setRoutineManagerOpen: (open: boolean) => void;
+  saveRoutine: (routine: Partial<RoutineStack> & { id?: string }) => Promise<void>;
+  deleteRoutine: (id: string) => Promise<void>;
+
+  // Feature 2: "Never Miss Twice" Streak Shields & Recovery Quests
+  streakShields: StreakShieldState;
+  applyShield: (dateStr: string, reason?: 'auto_freeze' | 'manual_forgiveness', note?: string) => Promise<{ success: boolean; message: string }>;
+  startResurrectionQuest: (lostStreak: number) => Promise<void>;
+  claimShieldReward: () => Promise<void>;
 }
 
 // Fallback in-memory / localStorage helpers when running outside Electron
@@ -160,6 +192,45 @@ const LOCAL_STORAGE_KEY_WELLNESS_LOGS = 'ht_wellness_logs';
 const LOCAL_STORAGE_KEY_SKIP_REASONS = 'ht_skip_reasons';
 const LOCAL_STORAGE_KEY_SKILL_PROGRESS = 'ht_skill_progress';
 const LOCAL_STORAGE_KEY_TRIGGER_RULES = 'ht_trigger_rules';
+const LOCAL_STORAGE_KEY_ROUTINES = 'ht_routines';
+const LOCAL_STORAGE_KEY_SHIELDS = 'ht_shields';
+
+const DEFAULT_ROUTINES: RoutineStack[] = [
+  {
+    id: 'routine-morning-ignition',
+    title: 'Morning Ignition Flow',
+    description: 'Prime your mind, body, and energy for focused momentum.',
+    emoji: '🌅',
+    color: '#f59e0b',
+    time_of_day: 'morning',
+    steps: [
+      { id: 'step-1', habit_id: '', duration_minutes: 5, notes: 'Hydrate with 500ml water & deep breathing' },
+      { id: 'step-2', habit_id: '', duration_minutes: 10, notes: 'Morning mobility stretch or sunlight exposure' },
+      { id: 'step-3', habit_id: '', duration_minutes: 5, notes: 'Identify and write top 3 priority tasks' },
+    ],
+    created_at: new Date().toISOString(),
+  },
+  {
+    id: 'routine-evening-winddown',
+    title: 'Evening Wind-Down',
+    description: 'Disconnect, celebrate daily progress, and prepare for restorative sleep.',
+    emoji: '🌙',
+    color: '#8b5cf6',
+    time_of_day: 'evening',
+    steps: [
+      { id: 'step-e1', habit_id: '', duration_minutes: 10, notes: 'Screens down & switch to warm ambient lighting' },
+      { id: 'step-e2', habit_id: '', duration_minutes: 15, notes: 'Read inspiring book chapters or meditate' },
+      { id: 'step-e3', habit_id: '', duration_minutes: 5, notes: 'Reflect on wins and plan tomorrow morning' },
+    ],
+    created_at: new Date().toISOString(),
+  },
+];
+
+const DEFAULT_SHIELDS: StreakShieldState = {
+  available_shields: 2,
+  shield_events: [],
+  resurrection_quest: null,
+};
 
 const getInitialAuthState = (): {
   currentUser: UserProfile | null;
@@ -220,6 +291,14 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
     skipReasons: {},
     skillProgress: {},
     triggerRules: [],
+
+    // Feature 1: Routines
+    routines: DEFAULT_ROUTINES,
+    activeRoutineRunner: null,
+    routineManagerOpen: false,
+
+    // Feature 2: Streak Shields
+    streakShields: DEFAULT_SHIELDS,
 
     // Auth & Profile state
     currentUser: initialAuth.currentUser,
@@ -357,6 +436,26 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
             created_at: t.created_at,
           }));
 
+          let routines: RoutineStack[] = DEFAULT_ROUTINES;
+          const rawRoutines = localStorage.getItem(LOCAL_STORAGE_KEY_ROUTINES);
+          if (rawRoutines) {
+            try {
+              const parsed = JSON.parse(rawRoutines);
+              if (Array.isArray(parsed) && parsed.length > 0) routines = parsed;
+            } catch {}
+          }
+
+          let streakShields: StreakShieldState = DEFAULT_SHIELDS;
+          const rawShields = localStorage.getItem(LOCAL_STORAGE_KEY_SHIELDS);
+          if (rawShields) {
+            try {
+              const parsed = JSON.parse(rawShields);
+              if (parsed && typeof parsed.available_shields === 'number') {
+                streakShields = parsed;
+              }
+            } catch {}
+          }
+
           document.documentElement.setAttribute('data-theme', loadedSettings.theme || 'dark');
           sound.setEnabled(loadedSettings.sound_enabled ?? true);
 
@@ -370,6 +469,8 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
             skipReasons: skipReasonsMap,
             skillProgress: skillProgressMap,
             triggerRules,
+            routines,
+            streakShields,
             currentUser: null,
             usersList,
             authScreen: initialAuthScreen,
@@ -426,6 +527,26 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           const skillProgress: Record<string, SkillProgress> = rawSkillProgress ? JSON.parse(rawSkillProgress) : {};
           const triggerRules: TriggerRule[] = rawTriggerRules ? JSON.parse(rawTriggerRules) : [];
 
+          let routines: RoutineStack[] = DEFAULT_ROUTINES;
+          const rawRoutines = localStorage.getItem(LOCAL_STORAGE_KEY_ROUTINES);
+          if (rawRoutines) {
+            try {
+              const parsed = JSON.parse(rawRoutines);
+              if (Array.isArray(parsed) && parsed.length > 0) routines = parsed;
+            } catch {}
+          }
+
+          let streakShields: StreakShieldState = DEFAULT_SHIELDS;
+          const rawShields = localStorage.getItem(LOCAL_STORAGE_KEY_SHIELDS);
+          if (rawShields) {
+            try {
+              const parsed = JSON.parse(rawShields);
+              if (parsed && typeof parsed.available_shields === 'number') {
+                streakShields = parsed;
+              }
+            } catch {}
+          }
+
           document.documentElement.setAttribute('data-theme', parsedSettings.theme || 'dark');
           sound.setEnabled(parsedSettings.sound_enabled ?? true);
 
@@ -439,6 +560,8 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
             skipReasons,
             skillProgress,
             triggerRules,
+            routines,
+            streakShields,
             currentUser: null,
             usersList,
             authScreen: initialAuthScreen,
@@ -557,6 +680,27 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
       const nextList = get().allCheckinsList.filter((c) => !(c.habit_id === habitId && c.date === dateStr));
       if (nextCompleted) {
         nextList.push(updatedItem);
+
+        // Streak Shield / Resurrection Quest Progression
+        const shields = get().streakShields;
+        if (shields.resurrection_quest?.active && !shields.resurrection_quest.restored) {
+          const quest = shields.resurrection_quest;
+          if (!quest.completed_dates.includes(dateStr)) {
+            const nextCompletedDates = [...quest.completed_dates, dateStr];
+            const isRestored = nextCompletedDates.length >= quest.required_days;
+            const nextShields: StreakShieldState = {
+              ...shields,
+              resurrection_quest: {
+                ...quest,
+                completed_dates: nextCompletedDates,
+                restored: isRestored,
+                active: !isRestored,
+              },
+            };
+            localStorage.setItem(LOCAL_STORAGE_KEY_SHIELDS, JSON.stringify(nextShields));
+            set({ streakShields: nextShields });
+          }
+        }
       }
 
       set({
@@ -975,11 +1119,17 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
     exportData: async () => {
       if (window.api) {
         const raw = await window.api.data.export();
-        return JSON.stringify(raw, null, 2);
+        // Attach routines and streak shields to export payload
+        const enriched = {
+          ...raw,
+          routines: get().routines,
+          streak_shields: get().streakShields,
+        };
+        return JSON.stringify(enriched, null, 2);
       }
       return JSON.stringify({
         app: 'Zion Habit Tracker Studio',
-        version: '1.0.2',
+        version: '1.1.0',
         exported_at: new Date().toISOString(),
         habits: get().habits,
         checkins: get().allCheckinsList,
@@ -988,12 +1138,21 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         wellness_logs: Object.values(get().wellnessLogs),
         skip_reasons: Object.values(get().skipReasons),
         users: get().usersList,
+        routines: get().routines,
+        streak_shields: get().streakShields,
       }, null, 2);
     },
 
     importData: async (jsonStr) => {
       try {
         const parsed = JSON.parse(jsonStr);
+        if (Array.isArray(parsed.routines)) {
+          localStorage.setItem(LOCAL_STORAGE_KEY_ROUTINES, JSON.stringify(parsed.routines));
+        }
+        if (parsed.streak_shields && typeof parsed.streak_shields === 'object') {
+          localStorage.setItem(LOCAL_STORAGE_KEY_SHIELDS, JSON.stringify(parsed.streak_shields));
+        }
+
         if (window.api) {
           await window.api.data.import(parsed);
           await get().init();
@@ -1044,16 +1203,18 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
     resetAllData: async () => {
       if (window.api) {
         await window.api.data.reset();
-      } else {
-        localStorage.removeItem(LOCAL_STORAGE_KEY_HABITS);
-        localStorage.removeItem(LOCAL_STORAGE_KEY_CHECKINS);
-        localStorage.removeItem(LOCAL_STORAGE_KEY_SETTINGS);
-        localStorage.removeItem(LOCAL_STORAGE_KEY_DEPENDENCIES);
-        localStorage.removeItem(LOCAL_STORAGE_KEY_WELLNESS_LOGS);
-        localStorage.removeItem(LOCAL_STORAGE_KEY_SKIP_REASONS);
-        localStorage.removeItem(LOCAL_STORAGE_KEY_SKILL_PROGRESS);
-        localStorage.removeItem(LOCAL_STORAGE_KEY_TRIGGER_RULES);
       }
+      localStorage.removeItem(LOCAL_STORAGE_KEY_HABITS);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_CHECKINS);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_SETTINGS);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_DEPENDENCIES);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_WELLNESS_LOGS);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_SKIP_REASONS);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_SKILL_PROGRESS);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_TRIGGER_RULES);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_ROUTINES);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_SHIELDS);
+
       set({
         habits: [],
         checkins: {},
@@ -1064,6 +1225,10 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         skipReasons: {},
         skillProgress: {},
         triggerRules: [],
+        routines: DEFAULT_ROUTINES,
+        streakShields: DEFAULT_SHIELDS,
+        activeRoutineRunner: null,
+        routineManagerOpen: false,
       });
     },
 
@@ -1344,6 +1509,126 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         }));
         set({ triggerRules: parsedRules });
       }
+    },
+
+    // Routine Flow Runner & Habit Stacking actions
+    startRoutineRunner: (routine) => {
+      set({ activeRoutineRunner: routine });
+    },
+
+    closeRoutineRunner: () => {
+      set({ activeRoutineRunner: null });
+    },
+
+    setRoutineManagerOpen: (open) => {
+      set({ routineManagerOpen: open });
+    },
+
+    saveRoutine: async (routineData) => {
+      const currentRoutines = get().routines;
+      const id = routineData.id || `routine-${Date.now()}`;
+      const existingIdx = currentRoutines.findIndex((r) => r.id === id);
+
+      const routineToSave: RoutineStack = {
+        id,
+        title: routineData.title || 'Untitled Routine',
+        description: routineData.description || '',
+        emoji: routineData.emoji || '⚡',
+        color: routineData.color || '#3b82f6',
+        time_of_day: routineData.time_of_day || 'morning',
+        steps: routineData.steps || [],
+        created_at: routineData.created_at || new Date().toISOString(),
+      };
+
+      let nextRoutines: RoutineStack[];
+      if (existingIdx >= 0) {
+        nextRoutines = [...currentRoutines];
+        nextRoutines[existingIdx] = routineToSave;
+      } else {
+        nextRoutines = [...currentRoutines, routineToSave];
+      }
+
+      localStorage.setItem(LOCAL_STORAGE_KEY_ROUTINES, JSON.stringify(nextRoutines));
+      set({ routines: nextRoutines });
+    },
+
+    deleteRoutine: async (id) => {
+      const nextRoutines = get().routines.filter((r) => r.id !== id);
+      localStorage.setItem(LOCAL_STORAGE_KEY_ROUTINES, JSON.stringify(nextRoutines));
+      set({ routines: nextRoutines });
+    },
+
+    // Streak Shields actions
+    applyShield: async (dateStr, reason = 'manual_forgiveness', note) => {
+      const currentShields = get().streakShields;
+      if (currentShields.available_shields <= 0) {
+        return { success: false, message: 'No Streak Shields available! Keep up your streaks to earn more.' };
+      }
+
+      // Check if already protected
+      if (currentShields.shield_events.some((e) => e.date === dateStr)) {
+        return { success: false, message: `Date ${dateStr} is already protected by a streak shield.` };
+      }
+
+      const newEvent: ShieldEvent = {
+        id: `shield-${Date.now()}`,
+        date: dateStr,
+        reason,
+        note,
+        created_at: new Date().toISOString(),
+      };
+
+      const updatedState: StreakShieldState = {
+        ...currentShields,
+        available_shields: Math.max(0, currentShields.available_shields - 1),
+        shield_events: [newEvent, ...currentShields.shield_events],
+      };
+
+      localStorage.setItem(LOCAL_STORAGE_KEY_SHIELDS, JSON.stringify(updatedState));
+      set({ streakShields: updatedState });
+
+      playShieldProtect();
+
+      return {
+        success: true,
+        message: `Streak Shield deployed! Your streak is safely preserved for ${dateStr}.`,
+      };
+    },
+
+    startResurrectionQuest: async (lostStreak) => {
+      const todayStr = formatLocalDate(get().currentDate);
+      const currentShields = get().streakShields;
+
+      const newQuest: ResurrectionQuest = {
+        active: true,
+        lost_streak_count: lostStreak,
+        started_date: todayStr,
+        required_days: 3,
+        completed_dates: [todayStr],
+        restored: false,
+      };
+
+      const updatedState: StreakShieldState = {
+        ...currentShields,
+        resurrection_quest: newQuest,
+      };
+
+      localStorage.setItem(LOCAL_STORAGE_KEY_SHIELDS, JSON.stringify(updatedState));
+      set({ streakShields: updatedState });
+    },
+
+    claimShieldReward: async () => {
+      const currentShields = get().streakShields;
+      if (currentShields.available_shields >= 3) return;
+
+      const updatedState: StreakShieldState = {
+        ...currentShields,
+        available_shields: Math.min(3, currentShields.available_shields + 1),
+      };
+
+      localStorage.setItem(LOCAL_STORAGE_KEY_SHIELDS, JSON.stringify(updatedState));
+      set({ streakShields: updatedState });
+      sound.playCelebration();
     },
   };
 });
