@@ -45,15 +45,15 @@ export const TitleBar: React.FC = () => {
   const setTab = useHabitStore((s) => s.setTab);
   const activeTab = useHabitStore((s) => s.activeTab);
 
-  const habits = useHabitStore((s) => s.habits);
-  const checkins = useHabitStore((s) => s.checkins);
-  const allCheckinsList = useHabitStore((s) => s.allCheckinsList);
-  const settings = useHabitStore((s) => s.settings);
-  const currentDate = useHabitStore((s) => s.currentDate);
+  const habits = useHabitStore((s) => s.habits || []);
+  const checkins = useHabitStore((s) => s.checkins || {});
+  const allCheckinsList = useHabitStore((s) => s.allCheckinsList || []);
+  const settings = useHabitStore((s) => s.settings || {});
+  const currentDate = useHabitStore((s) => s.currentDate || new Date());
 
   const todayStr = formatLocalDate(currentDate);
   const todayWday = currentDate.getDay();
-  const activeHabits = habits.filter((h) => !h.archived);
+  const activeHabits = habits.filter((h) => !h?.archived);
   const scheduledToday = activeHabits.filter((h) => isHabitScheduledOnDay(h, todayWday));
   const doneToday = scheduledToday.filter((h) => checkins[`${h.id}_${todayStr}`]?.completed).length;
   const streakStats = computeStreakStats(habits, allCheckinsList, settings.streak_threshold, currentDate);
@@ -248,7 +248,7 @@ export const TitleBar: React.FC = () => {
                     ? 'text-[var(--text-primary)] font-semibold shadow-sm'
                     : ''
                 }`}
-                title={`Profile: ${currentUser.name} (@${currentUser.username})`}
+                title={`Profile: ${currentUser.name || currentUser.username || 'User'} (@${currentUser.username || 'user'})`}
               >
                 <div
                   style={{
@@ -262,10 +262,10 @@ export const TitleBar: React.FC = () => {
                   }}
                   className="w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-black border border-white/15 flex-shrink-0 shadow-sm"
                 >
-                  {currentUser.name ? currentUser.name[0].toUpperCase() : 'U'}
+                  {currentUser.name ? currentUser.name[0].toUpperCase() : currentUser.username ? currentUser.username[0].toUpperCase() : 'U'}
                 </div>
                 <span className="text-[11px] font-semibold truncate max-w-[65px] hidden lg:inline">
-                  {currentUser.name.split(' ')[0]}
+                  {currentUser.name ? currentUser.name.split(' ')[0] : currentUser.username || 'User'}
                 </span>
               </button>
             )}

@@ -9,14 +9,14 @@ export const StreakShieldCard: React.FC = () => {
   const streakShields = useHabitStore((s) => s.streakShields);
   const applyShield = useHabitStore((s) => s.applyShield);
   const startResurrectionQuest = useHabitStore((s) => s.startResurrectionQuest);
-  const currentDate = useHabitStore((s) => s.currentDate);
+  const currentDate = useHabitStore((s) => s.currentDate || new Date());
 
   const [selectedDate, setSelectedDate] = useState(() => formatLocalDate(subDays(currentDate, 1)));
   const [feedback, setFeedback] = useState<{ message: string; isError?: boolean } | null>(null);
 
-  const availableShields = streakShields.available_shields;
-  const quest = streakShields.resurrection_quest;
-  const recentEvents = streakShields.shield_events.slice(0, 5);
+  const availableShields = streakShields?.available_shields ?? 2;
+  const quest = streakShields?.resurrection_quest ?? null;
+  const recentEvents = (streakShields?.shield_events || []).slice(0, 5);
 
   const handleApply = async () => {
     if (!selectedDate) return;

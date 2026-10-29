@@ -13,8 +13,8 @@ import { useHabitStore } from '../store/useHabitStore';
 import { Layers, Play } from 'lucide-react';
 
 export const DashboardPage: React.FC = () => {
-  const habits = useHabitStore((s) => s.habits);
-  const activeHabits = habits.filter((h) => !h.archived);
+  const habits = useHabitStore((s) => s.habits || []);
+  const activeHabits = habits.filter((h) => !h?.archived);
   const setRoutineManagerOpen = useHabitStore((s) => s.setRoutineManagerOpen);
 
   return (

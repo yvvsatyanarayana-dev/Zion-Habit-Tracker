@@ -12,8 +12,8 @@ import { clsx } from 'clsx';
 import { formatLocalDate } from '../lib/dateUtils';
 
 export const DailyHabitsPage: React.FC = () => {
-  const habits = useHabitStore((s) => s.habits);
-  const activeHabits = habits.filter((h) => !h.archived);
+  const habits = useHabitStore((s) => s.habits || []);
+  const activeHabits = habits.filter((h) => !h?.archived);
   const openHabitModal = useHabitStore((s) => s.openHabitModal);
   const currentDate = useHabitStore((s) => s.currentDate);
   const habitDependencies = useHabitStore((s) => s.habitDependencies);

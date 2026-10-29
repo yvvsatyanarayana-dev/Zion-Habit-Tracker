@@ -195,13 +195,15 @@ export const App: React.FC = () => {
       <MobileNavigation />
 
       {/* Modals & Overlays */}
-      <HabitModal />
-      <CommandPalette />
-      <ReflectionModal />
-      <WeeklyReviewModal />
-      <RoutineRunnerModal />
-      <RoutineManagerModal />
-      <UpdateBanner />
+      <ErrorBoundary fallbackTitle="Overlay Component Error">
+        <HabitModal />
+        <CommandPalette />
+        <ReflectionModal />
+        <WeeklyReviewModal />
+        <RoutineRunnerModal />
+        <RoutineManagerModal />
+        <UpdateBanner />
+      </ErrorBoundary>
     </div>
   );
 };

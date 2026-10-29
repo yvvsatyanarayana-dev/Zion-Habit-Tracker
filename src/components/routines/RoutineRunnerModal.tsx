@@ -4,22 +4,26 @@ import { formatLocalDate } from '../../lib/dateUtils';
 import { playStepComplete, playTimerChime, sound } from '../../lib/audio';
 import { X, Play, Pause, RotateCcw, Plus, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Flame, Clock } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import type { RoutineStack } from '../../lib/types';
 
-export const RoutineRunnerModal: React.FC = () => {
-  const activeRoutine = useHabitStore((s) => s.activeRoutineRunner);
+interface RunnerProps {
+  activeRoutine: RoutineStack;
+}
+
+const RoutineRunnerModalContent: React.FC<RunnerProps> = ({ activeRoutine }) => {
   const closeRoutineRunner = useHabitStore((s) => s.closeRoutineRunner);
-  const habits = useHabitStore((s) => s.habits);
-  const checkins = useHabitStore((s) => s.checkins);
+  const habits = useHabitStore((s) => s.habits || []);
+  const checkins = useHabitStore((s) => s.checkins || {});
   const toggleCheckin = useHabitStore((s) => s.toggleCheckin);
-  const currentDate = useHabitStore((s) => s.currentDate);
+  const currentDate = useHabitStore((s) => s.currentDate || new Date());
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [secondsRemaining, setSecondsRemaining] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<any>(null);
 
-  const steps = activeRoutine?.steps || [];
+  const steps = activeRoutine.steps || [];
   const currentStep = steps[currentStepIndex];
   const linkedHabit = currentStep?.habit_id ? habits.find((h) => h.id === currentStep.habit_id) : null;
   const todayStr = formatLocalDate(currentDate);
@@ -56,8 +60,6 @@ export const RoutineRunnerModal: React.FC = () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [timerRunning]);
-
-  if (!activeRoutine) return null;
 
   const totalSteps = steps.length;
   const progressPercent = totalSteps > 0 ? ((currentStepIndex + (isCompleted ? 1 : 0)) / totalSteps) * 100 : 0;
@@ -113,20 +115,20 @@ export const RoutineRunnerModal: React.FC = () => {
       <div
         className="w-full max-w-xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[92vh] sm:max-h-[85vh]"
         style={{
-          backgroundColor: 'var(--surface-primary)',
-          borderColor: 'var(--border-subtle)',
-          color: 'var(--text-primary)',
+          backgroundColor: 'var(--surface-primary, #18181b)',
+          borderColor: 'var(--border-subtle, rgba(255,255,255,0.1))',
+          color: 'var(--text-primary, #ffffff)',
         }}
       >
         {/* Header bar */}
-        <div className="p-4 sm:p-5 border-b flex items-center justify-between" style={{ borderColor: 'var(--border-subtle)' }}>
+        <div className="p-4 sm:p-5 border-b flex items-center justify-between" style={{ borderColor: 'var(--border-subtle, rgba(255,255,255,0.1))' }}>
           <div className="flex items-center gap-3 min-w-0">
             <span className="text-2xl sm:text-3xl p-2 rounded-2xl bg-white/5 border border-white/10 shrink-0">
               {activeRoutine.emoji || '⚡'}
             </span>
             <div className="min-w-0">
               <h2 className="text-base sm:text-lg font-bold truncate tracking-tight">{activeRoutine.title}</h2>
-              <p className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>
+              <p className="text-xs truncate" style={{ color: 'var(--text-muted, #a1a1aa)' }}>
                 {activeRoutine.description || `${totalSteps} focused steps`}
               </p>
             </div>
@@ -160,7 +162,7 @@ export const RoutineRunnerModal: React.FC = () => {
                 <Sparkles size={40} />
               </div>
               <h3 className="text-2xl font-black tracking-tight">Routine Mastered!</h3>
-              <p className="text-sm max-w-sm" style={{ color: 'var(--text-secondary)' }}>
+              <p className="text-sm max-w-sm" style={{ color: 'var(--text-secondary, #d4d4d8)' }}>
                 You completed all {totalSteps} steps in the <strong className="text-white">{activeRoutine.title}</strong> flow. Momentum unlocked!
               </p>
               <button
@@ -175,7 +177,7 @@ export const RoutineRunnerModal: React.FC = () => {
             <>
               <div className="space-y-4">
                 <div className="flex items-center justify-between text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                  <span style={{ color: 'var(--text-muted)' }}>
+                  <span style={{ color: 'var(--text-muted, #a1a1aa)' }}>
                     Step {currentStepIndex + 1} of {totalSteps}
                   </span>
                   {linkedHabit && (
@@ -192,14 +194,14 @@ export const RoutineRunnerModal: React.FC = () => {
                     {currentStep?.notes || (linkedHabit ? linkedHabit.name : `Step #${currentStepIndex + 1}`)}
                   </h3>
                   {linkedHabit && currentStep?.notes && (
-                    <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+                    <p className="text-sm" style={{ color: 'var(--text-secondary, #d4d4d8)' }}>
                       Linked Habit: {linkedHabit.emoji} {linkedHabit.name}
                     </p>
                   )}
                 </div>
 
                 {/* Focus Timer Display */}
-                {currentStep?.duration_minutes > 0 ? (
+                {(currentStep?.duration_minutes || 0) > 0 ? (
                   <div className="my-6 p-6 rounded-3xl bg-white/[0.03] border border-white/5 flex flex-col items-center justify-center space-y-4">
                     <div className="text-5xl sm:text-6xl font-black font-mono tracking-tight text-white">
                       {formatTime(secondsRemaining)}
@@ -241,12 +243,12 @@ export const RoutineRunnerModal: React.FC = () => {
               </div>
 
               {/* Action Buttons */}
-              <div className="pt-4 border-t flex items-center justify-between gap-3" style={{ borderColor: 'var(--border-subtle)' }}>
+              <div className="pt-4 border-t flex items-center justify-between gap-3" style={{ borderColor: 'var(--border-subtle, rgba(255,255,255,0.1))' }}>
                 <button
                   onClick={handlePrev}
                   disabled={currentStepIndex === 0}
                   className="px-4 py-3 rounded-2xl border text-sm font-semibold flex items-center gap-1 disabled:opacity-30 disabled:pointer-events-none hover:bg-white/5 active:scale-95"
-                  style={{ borderColor: 'var(--border-subtle)' }}
+                  style={{ borderColor: 'var(--border-subtle, rgba(255,255,255,0.1))' }}
                 >
                   <ChevronLeft size={16} />
                   Back
@@ -278,4 +280,11 @@ export const RoutineRunnerModal: React.FC = () => {
       </div>
     </div>
   );
+};
+
+export const RoutineRunnerModal: React.FC = () => {
+  const activeRoutine = useHabitStore((s) => s.activeRoutineRunner);
+  if (!activeRoutine) return null;
+
+  return <RoutineRunnerModalContent activeRoutine={activeRoutine} />;
 };

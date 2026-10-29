@@ -490,8 +490,21 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           const rawSkillProgress = localStorage.getItem(LOCAL_STORAGE_KEY_SKILL_PROGRESS);
           const rawTriggerRules = localStorage.getItem(LOCAL_STORAGE_KEY_TRIGGER_RULES);
 
-          const parsedHabits: Habit[] = rawHabits ? JSON.parse(rawHabits) : [];
-          const checkinsList: Checkin[] = rawCheckins ? JSON.parse(rawCheckins) : [];
+          let parsedHabits: Habit[] = [];
+          if (rawHabits) {
+            try {
+              const h = JSON.parse(rawHabits);
+              if (Array.isArray(h)) parsedHabits = h;
+            } catch {}
+          }
+
+          let checkinsList: Checkin[] = [];
+          if (rawCheckins) {
+            try {
+              const c = JSON.parse(rawCheckins);
+              if (Array.isArray(c)) checkinsList = c;
+            } catch {}
+          }
           const checkinsMap: Record<string, Checkin> = {};
           for (const c of checkinsList) {
             checkinsMap[`${c.habit_id}_${c.date}`] = c;
@@ -1129,7 +1142,7 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
       }
       return JSON.stringify({
         app: 'Zion Habit Tracker Studio',
-        version: '1.1.0',
+        version: '1.1.1',
         exported_at: new Date().toISOString(),
         habits: get().habits,
         checkins: get().allCheckinsList,

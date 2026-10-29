@@ -46,9 +46,14 @@ export class ErrorBoundary extends Component<Props, State> {
           <h2 className="text-xl font-bold tracking-tight mb-2">
             {this.props.fallbackTitle || 'Something went wrong rendering this view'}
           </h2>
-          <p className="text-sm text-[var(--text-muted)] max-w-md mb-6 leading-relaxed">
+          <p className="text-sm text-[var(--text-muted)] max-w-md mb-4 leading-relaxed font-mono text-xs">
             {this.state.error?.message || 'An unexpected runtime error occurred.'}
           </p>
+          {this.state.error?.stack && (
+            <pre className="text-[10px] text-left p-3 rounded-xl bg-black/60 border border-white/10 text-red-300 max-w-xl max-h-36 overflow-auto font-mono mb-6 w-full select-text">
+              {this.state.error.stack}
+            </pre>
+          )}
           <div className="flex items-center gap-3">
             <button
               onClick={() => this.setState({ hasError: false, error: null })}
@@ -62,6 +67,16 @@ export class ErrorBoundary extends Component<Props, State> {
             >
               <RefreshCw size={14} />
               Reload Studio
+            </button>
+            <button
+              onClick={() => {
+                localStorage.removeItem('ht_current_user_id');
+                window.location.reload();
+              }}
+              className="px-4 py-2 rounded-lg bg-red-600/20 border border-red-500/30 text-red-300 text-xs font-semibold hover:bg-red-600/30 transition-all cursor-pointer"
+              title="Sign out and return to login screen"
+            >
+              Sign Out & Reload
             </button>
           </div>
         </div>

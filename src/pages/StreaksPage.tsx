@@ -8,8 +8,8 @@ import { useHabitStore } from '../store/useHabitStore';
 import { Flame } from 'lucide-react';
 
 export const StreaksPage: React.FC = () => {
-  const habits = useHabitStore((s) => s.habits);
-  const activeHabits = habits.filter((h) => !h.archived);
+  const habits = useHabitStore((s) => s.habits || []);
+  const activeHabits = habits.filter((h) => !h?.archived);
 
   return (
     <div className="w-full max-w-[1600px] mx-auto pb-16 space-y-6 animate-in fade-in duration-200">

@@ -16,10 +16,19 @@ import type { WeekStartDay } from './types';
 /**
  * Format date in local timezone to YYYY-MM-DD (avoiding UTC shift bugs)
  */
-export function formatLocalDate(date: Date): string {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
+export function formatLocalDate(date?: Date | string | number | null): string {
+  if (!date) date = new Date();
+  const dObj = date instanceof Date ? date : new Date(date);
+  if (isNaN(dObj.getTime())) {
+    const fallback = new Date();
+    const y = fallback.getFullYear();
+    const m = String(fallback.getMonth() + 1).padStart(2, '0');
+    const d = String(fallback.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  }
+  const y = dObj.getFullYear();
+  const m = String(dObj.getMonth() + 1).padStart(2, '0');
+  const d = String(dObj.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 }
 

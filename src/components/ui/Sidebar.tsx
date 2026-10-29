@@ -52,18 +52,18 @@ export const Sidebar: React.FC = () => {
   const toggleCheckin = useHabitStore((s) => s.toggleCheckin);
   const jumpToToday = useHabitStore((s) => s.jumpToToday);
   
-  const habits = useHabitStore((s) => s.habits);
-  const checkins = useHabitStore((s) => s.checkins);
-  const allCheckinsList = useHabitStore((s) => s.allCheckinsList);
-  const currentDate = useHabitStore((s) => s.currentDate);
-  const clockFormat = useHabitStore((s) => s.settings.clock_format);
-  const streakThreshold = useHabitStore((s) => s.settings.streak_threshold);
+  const habits = useHabitStore((s) => s.habits || []);
+  const checkins = useHabitStore((s) => s.checkins || {});
+  const allCheckinsList = useHabitStore((s) => s.allCheckinsList || []);
+  const currentDate = useHabitStore((s) => s.currentDate || new Date());
+  const clockFormat = useHabitStore((s) => s.settings?.clock_format);
+  const streakThreshold = useHabitStore((s) => s.settings?.streak_threshold ?? 50);
 
-  const searchQuery = useHabitStore((s) => s.searchQuery);
+  const searchQuery = useHabitStore((s) => s.searchQuery || '');
   const setSearchQuery = useHabitStore((s) => s.setSearchQuery);
   const { clockDate } = useLiveClock();
 
-  const activeHabits = habits.filter((h) => !h.archived);
+  const activeHabits = habits.filter((h) => !h?.archived);
   const todayStr = formatLocalDate(currentDate);
   const todayWday = currentDate.getDay();
 

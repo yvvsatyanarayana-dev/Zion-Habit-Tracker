@@ -450,7 +450,7 @@ export function generateFullBackupJSON(
 
   const payload: FullBackupPayload = {
     app: 'Zion Habit Tracker Studio',
-    version: '1.1.0',
+    version: '1.1.1',
     exported_at: new Date().toISOString(),
     metrics: {
       total_habits: habits.length,
