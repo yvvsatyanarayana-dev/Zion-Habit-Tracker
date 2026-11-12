@@ -1,4 +1,4 @@
-import { app, BrowserWindow, Tray, Menu, nativeImage, Notification, nativeTheme, screen } from 'electron';
+import { app, BrowserWindow, Tray, Menu, nativeImage, Notification, nativeTheme, screen, ipcMain } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import { initDatabase, getSettings } from './db';
@@ -244,9 +244,27 @@ function setupReminderCheck(): void {
 }
 
 function setupAutoUpdater(): void {
+  const { autoUpdater } = require('electron-updater');
+
+  ipcMain.handle('app:checkForUpdates', async () => {
+    if (isDev) return { status: 'dev' };
+    try {
+      await autoUpdater.checkForUpdatesAndNotify();
+      return { status: 'checked' };
+    } catch (err: any) {
+      return { status: 'error', message: err?.message || 'Update check failed' };
+    }
+  });
+
+  ipcMain.handle('app:installUpdate', () => {
+    if (!isDev) {
+      isQuitting = true;
+      autoUpdater.quitAndInstall();
+    }
+  });
+
   if (isDev) return;
   try {
-    const { autoUpdater } = require('electron-updater');
     autoUpdater.autoDownload = true;
     autoUpdater.autoInstallOnAppQuit = true;
 

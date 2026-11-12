@@ -114,6 +114,11 @@ export interface ElectronAPI {
     reset: () => Promise<{ habits: HabitData[]; checkins: CheckinData[]; settings: Record<string, string> }>;
   };
   notify: (title: string, body: string) => Promise<boolean>;
+  updater: {
+    check: () => Promise<{ status: string; message?: string }>;
+    install: () => Promise<void>;
+    onUpdateDownloaded: (callback: (info: { version?: string }) => void) => () => void;
+  };
   // Habit Dependencies
   dependencies: {
     getAll: (habitId?: string) => Promise<HabitDependencyData[]>;
@@ -224,6 +229,17 @@ const api: ElectronAPI = {
     create: (rule) => ipcRenderer.invoke('triggers:create', rule),
     update: (id, updates) => ipcRenderer.invoke('triggers:update', id, updates),
     delete: (id) => ipcRenderer.invoke('triggers:delete', id),
+  },
+  updater: {
+    check: () => ipcRenderer.invoke('app:checkForUpdates'),
+    install: () => ipcRenderer.invoke('app:installUpdate'),
+    onUpdateDownloaded: (callback) => {
+      const handler = (_event: Electron.IpcRendererEvent, info: { version?: string }) => callback(info);
+      ipcRenderer.on('app:update-downloaded', handler);
+      return () => {
+        ipcRenderer.removeListener('app:update-downloaded', handler);
+      };
+    },
   },
 };
 

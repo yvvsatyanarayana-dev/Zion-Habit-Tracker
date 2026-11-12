@@ -10,7 +10,8 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  build-android:
+    name: Build Android APK
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
@@ -55,15 +56,60 @@ jobs:
         working-directory: android
         run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
 
-      - name: Prepare APK for Release
+      - name: Prepare APK artifact
         run: |
           mkdir -p release-assets
           cp android/app/build/outputs/apk/debug/app-debug.apk release-assets/Zion-HabitTracker.apk
 
+      - name: Upload Android APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: release-assets/Zion-HabitTracker.apk
+
+  build-windows:
+    name: Build Windows Installer
+    runs-on: windows-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Windows Setup.exe
+        run: npm run dist
+
+      - name: Upload Windows artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: |
+            release/Zion Setup *.exe
+            release/Zion Setup *.exe.blockmap
+            release/latest.yml
+
+  publish-release:
+    name: Publish GitHub Release
+    needs: [build-android, build-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all release artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: all-assets
+          merge-multiple: true
+
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          files: release-assets/*
+          files: all-assets/*
           generate_release_notes: true
           draft: false
           prerelease: false

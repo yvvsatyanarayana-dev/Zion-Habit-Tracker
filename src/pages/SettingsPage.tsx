@@ -69,6 +69,14 @@ export const SettingsPage: React.FC = () => {
 
   const currentTheme = settings.theme || 'dark';
   const isAndroid = isAndroidApp();
+  const [readyToInstallVersion, setReadyToInstallVersion] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.api?.updater?.onUpdateDownloaded) return;
+    return window.api.updater.onUpdateDownloaded((info) => {
+      setReadyToInstallVersion(info?.version || 'latest');
+    });
+  }, []);
 
   useEffect(() => {
     if (!isAndroid) return;
@@ -945,7 +953,10 @@ export const SettingsPage: React.FC = () => {
                 setCheckingUpdate(true);
                 setUpdateError(null);
                 try {
-                  const info = await checkGitHubUpdate();
+                  const [info] = await Promise.all([
+                    checkGitHubUpdate(),
+                    window.api?.updater?.check().catch(() => null),
+                  ]);
                   setUpdateResult(info);
                 } catch {
                   setUpdateError('Could not reach GitHub Releases. Please check your internet connection.');
@@ -1001,6 +1012,16 @@ export const SettingsPage: React.FC = () => {
               </div>
 
               <div className="flex items-center gap-2 flex-wrap">
+                {readyToInstallVersion && (
+                  <button
+                    type="button"
+                    onClick={() => void window.api?.updater?.install()}
+                    className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-bold bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer touch-manipulation"
+                  >
+                    <Download size={13} />
+                    <span>Restart &amp; Install v{readyToInstallVersion}</span>
+                  </button>
+                )}
                 {updateResult.hasUpdate && (
                   <button
                     type="button"
@@ -1011,7 +1032,13 @@ export const SettingsPage: React.FC = () => {
                     className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg font-bold hover:brightness-110 cursor-pointer touch-manipulation"
                   >
                     <Download size={13} />
-                    <span>{isAndroid && updateResult.downloadType === 'apk' ? 'Download APK' : 'Download'}</span>
+                    <span>
+                      {isAndroid && updateResult.downloadType === 'apk'
+                        ? 'Download APK'
+                        : updateResult.downloadType === 'exe'
+                        ? 'Download Setup.exe'
+                        : 'Download'}
+                    </span>
                   </button>
                 )}
                 <button
