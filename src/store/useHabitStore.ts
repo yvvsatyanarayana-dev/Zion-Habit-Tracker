@@ -270,6 +270,9 @@ const persistActiveTimer = (timer: ActiveHabitTimer | null) => {
   } else {
     localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_TIMER);
   }
+  if (typeof window !== 'undefined' && window.api?.desktopTimer?.sync) {
+    void window.api.desktopTimer.sync(timer);
+  }
 };
 
 const DEFAULT_ROUTINES: RoutineStack[] = [
@@ -561,6 +564,17 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
               const parsed = JSON.parse(rawActiveTimer);
               if (parsed && parsed.habitId) activeHabitTimer = parsed;
             } catch {}
+          }
+          if (!activeHabitTimer && window.api?.desktopTimer?.get) {
+            try {
+              const osTimer = await window.api.desktopTimer.get();
+              if (osTimer && (osTimer as ActiveHabitTimer).habitId) {
+                activeHabitTimer = osTimer as ActiveHabitTimer;
+              }
+            } catch {}
+          }
+          if (activeHabitTimer && window.api?.desktopTimer?.sync) {
+            void window.api.desktopTimer.sync(activeHabitTimer);
           }
 
           applyThemeToDom(loadedSettings.theme || 'dark');

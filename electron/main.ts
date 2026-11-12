@@ -5,9 +5,114 @@ import { initDatabase, getSettings } from './db';
 import { registerIpcHandlers } from './ipc/handlers';
 
 let mainWindow: BrowserWindow | null = null;
+let timerWidgetWindow: BrowserWindow | null = null;
 let tray: Tray | null = null;
 let reminderInterval: NodeJS.Timeout | null = null;
+let desktopTimerInterval: NodeJS.Timeout | null = null;
 let isQuitting = false;
+
+interface DesktopTimerPayload {
+  habitId: string;
+  habitName: string;
+  habitColor: string;
+  targetSeconds: number;
+  accumulatedSeconds: number;
+  startedAtMs: number | null;
+  mode: 'countdown' | 'stopwatch';
+  soundscape: string;
+  notifiedTargetReached: boolean;
+}
+
+let activeTimerState: DesktopTimerPayload | null = null;
+
+function getTimerStatePath(): string {
+  return path.join(app.getPath('userData'), 'active-timer.json');
+}
+
+function loadPersistedTimerState(): DesktopTimerPayload | null {
+  try {
+    const p = getTimerStatePath();
+    if (fs.existsSync(p)) {
+      const parsed = JSON.parse(fs.readFileSync(p, 'utf-8'));
+      if (parsed && parsed.habitId) return parsed;
+    }
+  } catch {}
+  return null;
+}
+
+function savePersistedTimerState(timer: DesktopTimerPayload | null): void {
+  try {
+    const p = getTimerStatePath();
+    if (timer) {
+      fs.writeFileSync(p, JSON.stringify(timer), 'utf-8');
+    } else if (fs.existsSync(p)) {
+      fs.unlinkSync(p);
+    }
+  } catch {}
+}
+
+function formatHmsDesktop(totalSeconds: number): string {
+  const safe = Math.max(0, Math.floor(totalSeconds));
+  const hrs = Math.floor(safe / 3600);
+  const mins = Math.floor((safe % 3600) / 60);
+  const secs = safe % 60;
+  if (hrs > 0) {
+    return `${hrs}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+  }
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+function createTimerWidgetWindow(): void {
+  if (timerWidgetWindow && !timerWidgetWindow.isDestroyed()) {
+    timerWidgetWindow.show();
+    return;
+  }
+
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width, height, x, y } = primaryDisplay.workArea;
+  const widgetWidth = 330;
+  const widgetHeight = 108;
+
+  timerWidgetWindow = new BrowserWindow({
+    width: widgetWidth,
+    height: widgetHeight,
+    x: x + width - widgetWidth - 20,
+    y: y + height - widgetHeight - 20,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    resizable: false,
+    skipTaskbar: false,
+    hasShadow: true,
+    icon: getAppIconPath(),
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  timerWidgetWindow.setAlwaysOnTop(true, 'floating');
+
+  if (isDev) {
+    timerWidgetWindow.loadURL('http://localhost:5173/?widget=timer');
+  } else {
+    timerWidgetWindow.loadFile(path.join(__dirname, '../dist/index.html'), {
+      query: { widget: 'timer' },
+    });
+  }
+
+  timerWidgetWindow.on('closed', () => {
+    timerWidgetWindow = null;
+  });
+}
+
+function destroyTimerWidgetWindow(): void {
+  if (timerWidgetWindow && !timerWidgetWindow.isDestroyed()) {
+    timerWidgetWindow.close();
+  }
+  timerWidgetWindow = null;
+}
 
 const isDev = process.env.NODE_ENV === 'development';
 
@@ -152,7 +257,11 @@ function createWindow(): void {
     mainWindow?.show();
   });
 
-  // Handle minimize to tray when closed
+  mainWindow.on('show', () => {
+    destroyTimerWidgetWindow();
+  });
+
+  // Handle minimize to tray or floating desktop widget when closed
   mainWindow.on('close', (event) => {
     const settings = getSettings();
     let minimizeToTray = false;
@@ -161,10 +270,15 @@ function createWindow(): void {
       minimizeToTray = val ? JSON.parse(val) : false;
     } catch {}
 
-    if (minimizeToTray && !isQuitting) {
+    const hasActiveTimer = Boolean(activeTimerState);
+
+    if ((minimizeToTray || hasActiveTimer) && !isQuitting) {
       event.preventDefault();
       mainWindow?.hide();
       createTray();
+      if (hasActiveTimer) {
+        createTimerWidgetWindow();
+      }
     }
   });
 
@@ -296,8 +410,100 @@ function setupAutoUpdater(): void {
   }
 }
 
+function setupDesktopTimerService(): void {
+  activeTimerState = loadPersistedTimerState();
+
+  ipcMain.handle('timer:get', () => {
+    return activeTimerState;
+  });
+
+  ipcMain.handle('timer:sync', (_event, timer: DesktopTimerPayload | null) => {
+    activeTimerState = timer;
+    savePersistedTimerState(timer);
+
+    if (timerWidgetWindow && !timerWidgetWindow.isDestroyed()) {
+      timerWidgetWindow.webContents.send('timer:state-updated', timer);
+    }
+
+    if (!timer) {
+      destroyTimerWidgetWindow();
+      if (tray) tray.setToolTip('Zion - Habit Tracker Studio');
+    } else if (mainWindow && !mainWindow.isVisible()) {
+      createTray();
+      createTimerWidgetWindow();
+    }
+  });
+
+  ipcMain.handle('timer:action', (_event, action: 'pause' | 'resume' | 'finish' | 'discard' | 'open-main') => {
+    if (action === 'open-main') {
+      destroyTimerWidgetWindow();
+      if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.show();
+        mainWindow.focus();
+      }
+      return;
+    }
+
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('timer:remote-action', action);
+    }
+
+    if (action === 'finish' || action === 'discard') {
+      destroyTimerWidgetWindow();
+    }
+  });
+
+  desktopTimerInterval = setInterval(() => {
+    if (!activeTimerState) return;
+    const elapsed =
+      activeTimerState.accumulatedSeconds +
+      (activeTimerState.startedAtMs
+        ? Math.max(0, Math.floor((Date.now() - activeTimerState.startedAtMs) / 1000))
+        : 0);
+
+    const rem = Math.max(0, activeTimerState.targetSeconds - elapsed);
+    const displayStr =
+      elapsed >= activeTimerState.targetSeconds
+        ? formatHmsDesktop(elapsed)
+        : formatHmsDesktop(rem);
+
+    if (tray) {
+      tray.setToolTip(
+        `${activeTimerState.startedAtMs ? '⏱' : '⏸'} ${displayStr} · ${activeTimerState.habitName} — Zion`
+      );
+    }
+
+    if (
+      activeTimerState.mode === 'countdown' &&
+      elapsed >= activeTimerState.targetSeconds &&
+      !activeTimerState.notifiedTargetReached
+    ) {
+      activeTimerState = { ...activeTimerState, notifiedTargetReached: true };
+      savePersistedTimerState(activeTimerState);
+      if (Notification.isSupported()) {
+        const notif = new Notification({
+          title: `${activeTimerState.habitName} Target Reached!`,
+          body: `You completed your ${Math.round(activeTimerState.targetSeconds / 60)}m focus goal.`,
+          icon: getAppIconPath(),
+        });
+        notif.on('click', () => {
+          if (mainWindow) {
+            if (mainWindow.isMinimized()) mainWindow.restore();
+            mainWindow.show();
+            mainWindow.focus();
+          }
+        });
+        notif.show();
+      }
+    }
+  }, 1000);
+}
+
 app.on('before-quit', () => {
   isQuitting = true;
+  if (desktopTimerInterval) clearInterval(desktopTimerInterval);
+  destroyTimerWidgetWindow();
 });
 
 app.whenReady().then(() => {
@@ -305,6 +511,7 @@ app.whenReady().then(() => {
   syncNativeTheme();
   createWindow();
   setupReminderCheck();
+  setupDesktopTimerService();
   setupAutoUpdater();
 
   app.on('activate', () => {

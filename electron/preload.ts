@@ -119,6 +119,13 @@ export interface ElectronAPI {
     install: () => Promise<void>;
     onUpdateDownloaded: (callback: (info: { version?: string }) => void) => () => void;
   };
+  desktopTimer: {
+    sync: (timer: unknown | null) => Promise<void>;
+    get: () => Promise<unknown | null>;
+    sendAction: (action: 'pause' | 'resume' | 'finish' | 'discard' | 'open-main') => Promise<void>;
+    onSync: (callback: (timer: unknown | null) => void) => () => void;
+    onRemoteAction: (callback: (action: 'pause' | 'resume' | 'finish' | 'discard' | 'open-main') => void) => () => void;
+  };
   // Habit Dependencies
   dependencies: {
     getAll: (habitId?: string) => Promise<HabitDependencyData[]>;
@@ -238,6 +245,25 @@ const api: ElectronAPI = {
       ipcRenderer.on('app:update-downloaded', handler);
       return () => {
         ipcRenderer.removeListener('app:update-downloaded', handler);
+      };
+    },
+  },
+  desktopTimer: {
+    sync: (timer) => ipcRenderer.invoke('timer:sync', timer),
+    get: () => ipcRenderer.invoke('timer:get'),
+    sendAction: (action) => ipcRenderer.invoke('timer:action', action),
+    onSync: (callback) => {
+      const handler = (_event: Electron.IpcRendererEvent, timer: unknown | null) => callback(timer);
+      ipcRenderer.on('timer:state-updated', handler);
+      return () => {
+        ipcRenderer.removeListener('timer:state-updated', handler);
+      };
+    },
+    onRemoteAction: (callback) => {
+      const handler = (_event: Electron.IpcRendererEvent, action: 'pause' | 'resume' | 'finish' | 'discard' | 'open-main') => callback(action);
+      ipcRenderer.on('timer:remote-action', handler);
+      return () => {
+        ipcRenderer.removeListener('timer:remote-action', handler);
       };
     },
   },

@@ -86,6 +86,18 @@ export const App: React.FC = () => {
   // Global keyboard shortcuts (Ctrl+K, T, N, etc.)
   useKeyboardShortcuts();
 
+  // Listen to remote actions from Electron Always-On-Top Desktop Timer Widget
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.api?.desktopTimer?.onRemoteAction) return;
+    return window.api.desktopTimer.onRemoteAction((action) => {
+      const store = useHabitStore.getState();
+      if (action === 'pause') store.pauseHabitTimer();
+      else if (action === 'resume') store.resumeHabitTimer();
+      else if (action === 'finish') void store.stopAndLogHabitTimer(true);
+      else if (action === 'discard') store.discardHabitTimer();
+    });
+  }, []);
+
   const mainRef = React.useRef<HTMLElement>(null);
 
   // Reset page scroll to top whenever switching tabs
