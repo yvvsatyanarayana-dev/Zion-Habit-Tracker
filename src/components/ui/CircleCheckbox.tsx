@@ -61,7 +61,7 @@ export const CircleCheckbox: React.FC<CircleCheckboxProps> = ({
                 borderColor: 'var(--checkbox-unchecked-border)',
                 backgroundColor: 'var(--checkbox-unchecked-bg)',
               }),
-        } as React.CSSProperties
+        } as React.CSSProperties & Record<string, string>
       }
       className={`circle-checkbox group/cb relative inline-flex items-center justify-center border-[1.5px] border-solid transition-all duration-150 ease-out focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/40 select-none touch-manipulation after:content-[''] after:absolute after:-inset-2.5 after:rounded-full ${
         isSquircle ? 'rounded-[7px]' : 'rounded-full'

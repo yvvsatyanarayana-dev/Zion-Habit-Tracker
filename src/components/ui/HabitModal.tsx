@@ -67,6 +67,7 @@ export const HabitModal: React.FC = () => {
   const [targetValue, setTargetValue] = useState<number>(1);
   const [unit, setUnit] = useState<string>('');
   const [category, setCategory] = useState<HabitCategory>('health');
+  const [dailyFocusMinutes, setDailyFocusMinutes] = useState<number>(0);
   const [error, setError] = useState('');
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -82,6 +83,7 @@ export const HabitModal: React.FC = () => {
       setTargetValue(editingHabit.target_value ?? 1);
       setUnit(editingHabit.unit || '');
       setCategory(editingHabit.category || 'health');
+      setDailyFocusMinutes(editingHabit.daily_focus_minutes ?? 0);
     } else {
       const usedColors = new Set(habits.map((h) => h.color));
       const nextColor =
@@ -96,6 +98,7 @@ export const HabitModal: React.FC = () => {
       setTargetValue(1);
       setUnit('');
       setCategory('health');
+      setDailyFocusMinutes(0);
     }
     setError('');
 
@@ -197,6 +200,7 @@ export const HabitModal: React.FC = () => {
       target_value: habitType === 'numeric' ? Number(targetValue) || 1 : 1,
       unit: habitType === 'numeric' ? unit.trim() : '',
       category,
+      daily_focus_minutes: dailyFocusMinutes > 0 ? dailyFocusMinutes : undefined,
     });
 
     closeHabitModal();
@@ -484,6 +488,66 @@ export const HabitModal: React.FC = () => {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Daily Focus Timer Goal */}
+          <div
+            style={{
+              backgroundColor: 'var(--bg-surface-elevated)',
+              borderColor: 'var(--border-subtle)',
+            }}
+            className="p-3 rounded-xl border space-y-2"
+          >
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <span className="text-[11px] font-bold uppercase tracking-wider block" style={{ color: 'var(--text-muted)' }}>
+                  Daily Focus Timer Goal
+                </span>
+                <span className="text-[11px]" style={{ color: 'var(--text-secondary)' }}>
+                  Set a daily timer target (e.g. 3 hrs = 180 mins for Programming)
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="number"
+                  min={0}
+                  max={480}
+                  value={dailyFocusMinutes}
+                  onChange={(e) => setDailyFocusMinutes(Math.max(0, Math.min(480, Number(e.target.value) || 0)))}
+                  style={{
+                    backgroundColor: 'var(--bg-surface)',
+                    borderColor: 'var(--border-subtle)',
+                    color: 'var(--text-primary)',
+                  }}
+                  className="w-16 h-8 px-2 rounded-lg border text-xs font-num font-bold text-center outline-none focus:border-[var(--accent-primary)]"
+                />
+                <span className="text-[11px] font-medium" style={{ color: 'var(--text-muted)' }}>min</span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {[
+                { label: 'Off', mins: 0 },
+                { label: '25m', mins: 25 },
+                { label: '45m', mins: 45 },
+                { label: '1h', mins: 60 },
+                { label: '2h', mins: 120 },
+                { label: '3h (180m)', mins: 180 },
+              ].map((preset) => (
+                <button
+                  key={preset.mins}
+                  type="button"
+                  onClick={() => setDailyFocusMinutes(preset.mins)}
+                  className={`px-2.5 py-1 rounded-lg text-[11px] font-bold border transition-colors cursor-pointer ${
+                    dailyFocusMinutes === preset.mins
+                      ? 'bg-[var(--accent-primary)] text-white border-transparent'
+                      : 'bg-[var(--bg-surface)] text-[var(--text-muted)] border-[var(--border-subtle)] hover:text-[var(--text-primary)]'
+                  }`}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Lucide Studio Icon Picker */}

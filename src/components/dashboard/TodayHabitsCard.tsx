@@ -4,7 +4,7 @@ import { CircleCheckbox } from '../ui/CircleCheckbox';
 import { useHabitStore } from '../../store/useHabitStore';
 import { formatLocalDate } from '../../lib/dateUtils';
 import { isHabitScheduledOnDay } from '../../lib/statsUtils';
-import { Plus, Check, Clock, Calendar } from 'lucide-react';
+import { Plus, Check, Clock, Calendar, Play, Timer } from 'lucide-react';
 import { HabitIconView } from '../../lib/habitIcons';
 
 export const TodayHabitsCard: React.FC = () => {
@@ -23,6 +23,9 @@ export const TodayHabitsCard: React.FC = () => {
   const selectedCategory = useHabitStore((s) => s.selectedCategory);
   const openReflectionModal = useHabitStore((s) => s.openReflectionModal);
   const updateNumericValue = useHabitStore((s) => s.updateNumericValue);
+  const activeHabitTimer = useHabitStore((s) => s.activeHabitTimer);
+  const startHabitTimer = useHabitStore((s) => s.startHabitTimer);
+  const setFocusStudioOpen = useHabitStore((s) => s.setFocusStudioOpen);
 
   React.useEffect(() => {
     if (!todayTrigger) return;
@@ -243,6 +246,35 @@ export const TodayHabitsCard: React.FC = () => {
                   )}
 
                   <div className="flex items-center gap-2 ml-auto sm:ml-0">
+                    {/* Start / View Real-Time Habit Timer */}
+                    {(() => {
+                      const isTimerActive = activeHabitTimer?.habitId === habit.id;
+                      const goalMins = habit.daily_focus_minutes;
+                      const goalLabel = goalMins
+                        ? goalMins >= 60
+                          ? `${+(goalMins / 60).toFixed(1)}h`
+                          : `${goalMins}m`
+                        : 'Timer';
+                      return (
+                        <button
+                          type="button"
+                          onClick={() => (isTimerActive ? setFocusStudioOpen(true) : startHabitTimer(habit))}
+                          style={{
+                            backgroundColor: isTimerActive ? `${habit.color}20` : 'var(--bg-surface-elevated)',
+                            borderColor: isTimerActive ? habit.color : 'var(--border-subtle)',
+                            color: isTimerActive ? habit.color : 'var(--text-secondary)',
+                          }}
+                          className={`h-8 px-2.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] transition-colors cursor-pointer touch-manipulation ${
+                            isTimerActive ? 'animate-pulse' : ''
+                          }`}
+                          title={isTimerActive ? 'Open running Focus Studio' : `Start real-time timer for "${habit.name}"`}
+                        >
+                          {isTimerActive ? <Timer size={12} /> : <Play size={11} fill="currentColor" />}
+                          <span className="text-[11px]">{isTimerActive ? 'LIVE' : goalLabel}</span>
+                        </button>
+                      );
+                    })()}
+
                     {/* Reflection Note Button */}
                     <button
                       onClick={() => openReflectionModal(habit.id, todayStr)}

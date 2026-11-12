@@ -405,10 +405,10 @@ export const HabitReplaySlider: React.FC<HabitReplaySliderProps> = ({ isOpen, on
                       <div className="mt-3 pt-3 border-t border-border/50 flex items-center gap-2">
                         <span className="text-sm">Mood:</span>
                         <span className="text-lg">
-                          {['😞', '😐', '🙂', '😊', '😄'][checkinData.mood - 1] || ''}
+                          {{ tired: '😞', neutral: '😐', good: '😊', energized: '⚡' }[checkinData.mood] || '😐'}
                         </span>
                         <span className="text-xs text-muted-foreground capitalize">
-                          {checkinData.mood === 1 ? 'tired' : checkinData.mood === 2 ? 'neutral' : checkinData.mood === 3 ? 'good' : 'energized'}
+                          {checkinData.mood}
                         </span>
                       </div>
                     )}

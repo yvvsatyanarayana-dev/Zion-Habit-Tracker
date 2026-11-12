@@ -15,6 +15,9 @@ import {
   Zap,
   User,
   BookOpen,
+  Headphones,
+  Heart,
+  Share2,
 } from 'lucide-react';
 import { useHabitStore } from '../../store/useHabitStore';
 import { formatLocalDate } from '../../lib/dateUtils';
@@ -30,6 +33,9 @@ export const CommandPalette: React.FC = () => {
   const habits = useHabitStore((s) => s.habits);
   const checkins = useHabitStore((s) => s.checkins);
   const currentDate = useHabitStore((s) => s.currentDate);
+  const setFocusStudioOpen = useHabitStore((s) => s.setFocusStudioOpen);
+  const setWellnessModalOpen = useHabitStore((s) => s.setWellnessModalOpen);
+  const setShareCardOpen = useHabitStore((s) => s.setShareCardOpen);
 
   const [query, setQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'habits' | 'navigation' | 'actions'>('all');
@@ -69,6 +75,33 @@ export const CommandPalette: React.FC = () => {
       accentColor: '#6366f1',
       shortcut: 'N',
       action: () => openHabitModal(),
+    },
+    {
+      id: 'cmd-focus-studio',
+      label: 'Open Deep Focus Studio',
+      description: 'Start Pomodoro / Deep Work timer with offline soundscapes',
+      category: 'actions',
+      icon: Headphones,
+      accentColor: '#818cf8',
+      action: () => setFocusStudioOpen(true),
+    },
+    {
+      id: 'cmd-log-wellness',
+      label: 'Log Daily Wellness',
+      description: 'Record today’s energy, mood, and reflection note',
+      category: 'actions',
+      icon: Heart,
+      accentColor: '#f472b6',
+      action: () => setWellnessModalOpen(true),
+    },
+    {
+      id: 'cmd-share-card',
+      label: 'Export Studio Progress Card',
+      description: 'Generate a high-res PNG summary of your habits and rank',
+      category: 'actions',
+      icon: Share2,
+      accentColor: '#10b981',
+      action: () => setShareCardOpen(true),
     },
     {
       id: 'cmd-jump-today',

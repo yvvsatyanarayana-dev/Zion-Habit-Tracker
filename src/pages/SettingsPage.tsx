@@ -201,7 +201,12 @@ export const SettingsPage: React.FC = () => {
   const handleReminderTimeChange = async (reminderTime: string) => {
     try {
       await updateSetting('reminder_time', reminderTime);
-      if (isAndroid) setNotificationStatus('Updating daily reminder…');
+      setNotificationStatus(
+        reminderTime
+          ? `Daily reminder scheduled for ${reminderTime}`
+          : 'Daily reminder disabled'
+      );
+      setTimeout(() => setNotificationStatus(''), 4000);
     } catch (error) {
       console.error('Failed to save daily reminder time:', error);
       setNotificationStatus(
@@ -672,6 +677,21 @@ export const SettingsPage: React.FC = () => {
                   }}
                   className="text-[13px] font-num font-bold px-2.5 py-1.5 rounded-[10px] outline-none border cursor-pointer"
                 />
+                {settings.reminder_time && (
+                  <button
+                    type="button"
+                    onClick={() => void handleReminderTimeChange('')}
+                    style={{
+                      backgroundColor: 'var(--bg-surface-elevated)',
+                      borderColor: 'var(--border-subtle)',
+                      color: 'var(--text-muted)',
+                    }}
+                    className="px-2.5 py-1.5 rounded-[10px] text-[12px] font-semibold border hover:text-[var(--text-primary)] cursor-pointer"
+                    title="Disable daily reminder"
+                  >
+                    Off
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleTestNotification}

@@ -178,12 +178,17 @@ function createWindow(): void {
     mainWindow = null;
   });
 
-  // Check if tray should already exist on startup
+  // Check if tray and OS theme should already be applied on startup
   try {
     const settings = getSettings();
     const val = settings['minimize_to_tray'];
     if (val && JSON.parse(val)) {
       createTray();
+    }
+    const savedTheme = settings['theme'];
+    if (savedTheme) {
+      const parsedTheme = JSON.parse(savedTheme);
+      nativeTheme.themeSource = parsedTheme === 'light' ? 'light' : 'dark';
     }
   } catch {}
 }

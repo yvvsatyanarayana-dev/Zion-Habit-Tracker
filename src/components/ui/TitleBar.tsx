@@ -22,6 +22,7 @@ import {
 import { useHabitStore } from '../../store/useHabitStore';
 import { formatLocalDate } from '../../lib/dateUtils';
 import { isHabitScheduledOnDay, computeStreakStats } from '../../lib/statsUtils';
+import { sendOsNotification } from '../../lib/reminders';
 import {
   exportJSONBackup,
   exportCSVHistory,
@@ -93,9 +94,7 @@ export const TitleBar: React.FC = () => {
 
   const triggerToast = (msg: string) => {
     setExportToast(msg);
-    if (window.api) {
-      window.api.notify('Zion Studio', msg).catch(() => {});
-    }
+      void sendOsNotification('Zion Studio', msg);
     setTimeout(() => {
       setExportToast(null);
     }, 3000);

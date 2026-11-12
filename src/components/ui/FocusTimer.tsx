@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RotateCcw, Timer, Sparkles } from 'lucide-react';
 import { useHabitStore } from '../../store/useHabitStore';
+import { sendOsNotification } from '../../lib/reminders';
 
 interface FocusTimerProps {
   collapsed?: boolean;
@@ -13,6 +14,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({ collapsed = false }) => 
   const [selectedHabitName, setSelectedHabitName] = useState<string>('Focus Session');
   
   const habits = useHabitStore((s) => s.habits);
+  const logFocusSession = useHabitStore((s) => s.logFocusSession);
   const activeHabits = habits.filter((h) => !h.archived);
 
   useEffect(() => {
@@ -22,12 +24,15 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({ collapsed = false }) => 
         setSecondsLeft((prev) => {
           if (prev <= 1) {
             setIsRunning(false);
-            if (window.api) {
-              window.api.notify(
-                'Focus Timer Completed!',
-                `Great work! Your ${selectedHabitName} session has ended.`
-              );
-            }
+            void sendOsNotification(
+              'Focus Timer Completed!',
+              `Great work! Your ${selectedHabitName} session (${initialMinutes}m) has ended.`
+            );
+            void logFocusSession({
+              habit_name: selectedHabitName,
+              duration_minutes: initialMinutes,
+              soundscape: 'none',
+            });
             return 0;
           }
           return prev - 1;
@@ -37,7 +42,7 @@ export const FocusTimer: React.FC<FocusTimerProps> = ({ collapsed = false }) => 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [isRunning, secondsLeft, selectedHabitName]);
+  }, [isRunning, secondsLeft, selectedHabitName, initialMinutes, logFocusSession]);
 
   const toggleTimer = () => {
     if (secondsLeft === 0) {

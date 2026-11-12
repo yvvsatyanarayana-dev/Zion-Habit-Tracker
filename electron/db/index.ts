@@ -381,6 +381,7 @@ export function deleteTriggerRule(id: string): void {
 
 // Export / Import / Reset
 export function exportData(): { habits: HabitRow[]; checkins: CheckinRow[]; settings: Record<string, string>; dependencies: HabitDependencyRow[]; wellness_logs: WellnessLogRow[]; skip_reasons: SkipReasonRow[]; skill_progress: SkillProgressRow[]; trigger_rules: TriggerRuleRow[] } {
+  const db = getDb();
   return {
     habits: getHabits(true),
     checkins: getAllCheckins(),

@@ -15,11 +15,16 @@ import type {
   StreakShieldState,
   ShieldEvent,
   ResurrectionQuest,
+  FocusSession,
+  SoundscapeType,
+  ActiveHabitTimer,
 } from '../lib/types';
-import { DEFAULT_SETTINGS, HABIT_PALETTE } from '../lib/constants';
+import { APP_VERSION, DEFAULT_SETTINGS, HABIT_PALETTE } from '../lib/constants';
 import { formatLocalDate } from '../lib/dateUtils';
 import { isHabitScheduledOnDay, computeStreakStats } from '../lib/statsUtils';
 import { sound, playShieldProtect } from '../lib/audio';
+import { soundscapeEngine } from '../lib/soundscapes';
+import { syncAndroidDailyReminder } from '../lib/reminders';
 import type { ElectronAPI } from '../../electron/preload';
 
 declare global {
@@ -27,6 +32,20 @@ declare global {
     api?: ElectronAPI;
   }
 }
+
+const applyThemeToDom = (theme: string) => {
+  const resolved = theme === 'light' ? 'light' : 'dark';
+  if (typeof document !== 'undefined') {
+    document.documentElement.setAttribute('data-theme', resolved);
+    let meta = document.querySelector('meta[name="theme-color"]') as HTMLMetaElement | null;
+    if (!meta) {
+      meta = document.createElement('meta');
+      meta.name = 'theme-color';
+      document.head.appendChild(meta);
+    }
+    meta.content = resolved === 'light' ? '#f8fafc' : '#09090b';
+  }
+};
 
 const syncTaskbarProgress = (habits: Habit[], checkins: Record<string, Checkin>, currentDate: Date) => {
   if (typeof window !== 'undefined' && window.api?.os?.setProgressBar) {
@@ -178,6 +197,32 @@ interface HabitStoreState {
   applyShield: (dateStr: string, reason?: 'auto_freeze' | 'manual_forgiveness', note?: string) => Promise<{ success: boolean; message: string }>;
   startResurrectionQuest: (lostStreak: number) => Promise<void>;
   claimShieldReward: () => Promise<void>;
+
+  // Feature 4 & 5: Deep Focus Studio, Share Card & Wellness Modal
+  focusStudioOpen: boolean;
+  setFocusStudioOpen: (open: boolean) => void;
+  shareCardOpen: boolean;
+  setShareCardOpen: (open: boolean) => void;
+  wellnessModalOpen: boolean;
+  setWellnessModalOpen: (open: boolean) => void;
+  focusSessions: FocusSession[];
+  logFocusSession: (session: {
+    habit_id?: string;
+    habit_name: string;
+    duration_minutes: number;
+    soundscape: SoundscapeType;
+    autoCheckin?: boolean;
+  }) => Promise<void>;
+
+  // Feature 6: Real-Time Persistent Per-Habit Timer
+  activeHabitTimer: ActiveHabitTimer | null;
+  startHabitTimer: (habit: Habit, overrideMinutes?: number, mode?: 'countdown' | 'stopwatch') => void;
+  pauseHabitTimer: () => void;
+  resumeHabitTimer: () => void;
+  stopAndLogHabitTimer: (autoCheckin?: boolean) => Promise<number>;
+  discardHabitTimer: () => void;
+  setHabitTimerSoundscape: (soundscape: SoundscapeType) => void;
+  markHabitTimerTargetNotified: () => void;
 }
 
 // Fallback in-memory / localStorage helpers when running outside Electron
@@ -194,6 +239,38 @@ const LOCAL_STORAGE_KEY_SKILL_PROGRESS = 'ht_skill_progress';
 const LOCAL_STORAGE_KEY_TRIGGER_RULES = 'ht_trigger_rules';
 const LOCAL_STORAGE_KEY_ROUTINES = 'ht_routines';
 const LOCAL_STORAGE_KEY_SHIELDS = 'ht_shields';
+const LOCAL_STORAGE_KEY_FOCUS_SESSIONS = 'ht_focus_sessions';
+const LOCAL_STORAGE_KEY_ACTIVE_TIMER = 'ht_active_habit_timer';
+const LOCAL_STORAGE_KEY_HABIT_FOCUS_GOALS = 'ht_habit_focus_goals';
+
+const loadHabitFocusGoals = (): Record<string, number> => {
+  try {
+    const raw = localStorage.getItem(LOCAL_STORAGE_KEY_HABIT_FOCUS_GOALS);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && typeof parsed === 'object') return parsed;
+    }
+  } catch {}
+  return {};
+};
+
+const saveHabitFocusGoal = (habitId: string, minutes?: number) => {
+  const map = loadHabitFocusGoals();
+  if (minutes && minutes > 0) {
+    map[habitId] = minutes;
+  } else {
+    delete map[habitId];
+  }
+  localStorage.setItem(LOCAL_STORAGE_KEY_HABIT_FOCUS_GOALS, JSON.stringify(map));
+};
+
+const persistActiveTimer = (timer: ActiveHabitTimer | null) => {
+  if (timer) {
+    localStorage.setItem(LOCAL_STORAGE_KEY_ACTIVE_TIMER, JSON.stringify(timer));
+  } else {
+    localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_TIMER);
+  }
+};
 
 const DEFAULT_ROUTINES: RoutineStack[] = [
   {
@@ -300,6 +377,16 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
     // Feature 2: Streak Shields
     streakShields: DEFAULT_SHIELDS,
 
+    // Feature 4 & 5: Deep Focus Studio, Share Card & Wellness Modal
+    focusStudioOpen: false,
+    setFocusStudioOpen: (open) => set({ focusStudioOpen: open }),
+    shareCardOpen: false,
+    setShareCardOpen: (open) => set({ shareCardOpen: open }),
+    wellnessModalOpen: false,
+    setWellnessModalOpen: (open) => set({ wellnessModalOpen: open }),
+    focusSessions: [],
+    activeHabitTimer: null,
+
     // Auth & Profile state
     currentUser: initialAuth.currentUser,
     usersList: initialAuth.usersList,
@@ -367,6 +454,7 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
             window.api.triggers.getAll(),
           ]);
 
+          const focusGoalsMap = loadHabitFocusGoals();
           const parsedHabits: Habit[] = dbHabits.map((h) => ({
             id: h.id,
             name: h.name,
@@ -381,6 +469,7 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
             target_value: Number(h.target_value) || 1,
             unit: h.unit || '',
             category: (h.category as any) || 'routine',
+            daily_focus_minutes: focusGoalsMap[h.id],
           }));
 
           const checkinsMap: Record<string, Checkin> = {};
@@ -456,7 +545,25 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
             } catch {}
           }
 
-          document.documentElement.setAttribute('data-theme', loadedSettings.theme || 'dark');
+          let focusSessions: FocusSession[] = [];
+          const rawFocusSessions = localStorage.getItem(LOCAL_STORAGE_KEY_FOCUS_SESSIONS);
+          if (rawFocusSessions) {
+            try {
+              const parsed = JSON.parse(rawFocusSessions);
+              if (Array.isArray(parsed)) focusSessions = parsed;
+            } catch {}
+          }
+
+          let activeHabitTimer: ActiveHabitTimer | null = null;
+          const rawActiveTimer = localStorage.getItem(LOCAL_STORAGE_KEY_ACTIVE_TIMER);
+          if (rawActiveTimer) {
+            try {
+              const parsed = JSON.parse(rawActiveTimer);
+              if (parsed && parsed.habitId) activeHabitTimer = parsed;
+            } catch {}
+          }
+
+          applyThemeToDom(loadedSettings.theme || 'dark');
           sound.setEnabled(loadedSettings.sound_enabled ?? true);
 
           set({
@@ -471,6 +578,8 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
             triggerRules,
             routines,
             streakShields,
+            focusSessions,
+            activeHabitTimer,
             currentUser: null,
             usersList,
             authScreen: initialAuthScreen,
@@ -494,7 +603,13 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           if (rawHabits) {
             try {
               const h = JSON.parse(rawHabits);
-              if (Array.isArray(h)) parsedHabits = h;
+              if (Array.isArray(h)) {
+                const focusGoalsMap = loadHabitFocusGoals();
+                parsedHabits = h.map((item) => ({
+                  ...item,
+                  daily_focus_minutes: item.daily_focus_minutes ?? focusGoalsMap[item.id],
+                }));
+              }
             } catch {}
           }
 
@@ -560,7 +675,25 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
             } catch {}
           }
 
-          document.documentElement.setAttribute('data-theme', parsedSettings.theme || 'dark');
+          let focusSessions: FocusSession[] = [];
+          const rawFocusSessions = localStorage.getItem(LOCAL_STORAGE_KEY_FOCUS_SESSIONS);
+          if (rawFocusSessions) {
+            try {
+              const parsed = JSON.parse(rawFocusSessions);
+              if (Array.isArray(parsed)) focusSessions = parsed;
+            } catch {}
+          }
+
+          let activeHabitTimer: ActiveHabitTimer | null = null;
+          const rawActiveTimer = localStorage.getItem(LOCAL_STORAGE_KEY_ACTIVE_TIMER);
+          if (rawActiveTimer) {
+            try {
+              const parsed = JSON.parse(rawActiveTimer);
+              if (parsed && parsed.habitId) activeHabitTimer = parsed;
+            } catch {}
+          }
+
+          applyThemeToDom(parsedSettings.theme || 'dark');
           sound.setEnabled(parsedSettings.sound_enabled ?? true);
 
           set({
@@ -575,6 +708,8 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
             triggerRules,
             routines,
             streakShields,
+            focusSessions,
+            activeHabitTimer,
             currentUser: null,
             usersList,
             authScreen: initialAuthScreen,
@@ -869,6 +1004,9 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         set({ habits: updatedHabits });
 
         const updatedHabit = updatedHabits.find((h) => h.id === id);
+        if (updatedHabit) {
+          saveHabitFocusGoal(id, updatedHabit.daily_focus_minutes);
+        }
         if (window.api && updatedHabit) {
           await window.api.habits.update({
             id,
@@ -906,8 +1044,10 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           target_value: habitData.target_value ?? 1,
           unit: habitData.unit || '',
           category: habitData.category || 'routine',
+          daily_focus_minutes: habitData.daily_focus_minutes,
         };
 
+        saveHabitFocusGoal(newHabit.id, newHabit.daily_focus_minutes);
         const updatedHabits = [...habits, newHabit];
         set({ habits: updatedHabits });
 
@@ -987,7 +1127,11 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
       set({ settings: nextSettings });
 
       if (key === 'theme') {
-        document.documentElement.setAttribute('data-theme', value as string);
+        applyThemeToDom(value as string);
+      } else if (key === 'sound_enabled') {
+        sound.setEnabled(Boolean(value));
+      } else if (key === 'reminder_time') {
+        await syncAndroidDailyReminder((value as string) || '');
       }
 
       if (window.api) {
@@ -1137,12 +1281,13 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           ...raw,
           routines: get().routines,
           streak_shields: get().streakShields,
+          focus_sessions: get().focusSessions,
         };
         return JSON.stringify(enriched, null, 2);
       }
       return JSON.stringify({
         app: 'Zion Habit Tracker Studio',
-        version: '1.1.1',
+        version: APP_VERSION,
         exported_at: new Date().toISOString(),
         habits: get().habits,
         checkins: get().allCheckinsList,
@@ -1153,6 +1298,7 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         users: get().usersList,
         routines: get().routines,
         streak_shields: get().streakShields,
+        focus_sessions: get().focusSessions,
       }, null, 2);
     },
 
@@ -1164,6 +1310,9 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         }
         if (parsed.streak_shields && typeof parsed.streak_shields === 'object') {
           localStorage.setItem(LOCAL_STORAGE_KEY_SHIELDS, JSON.stringify(parsed.streak_shields));
+        }
+        if (Array.isArray(parsed.focus_sessions)) {
+          localStorage.setItem(LOCAL_STORAGE_KEY_FOCUS_SESSIONS, JSON.stringify(parsed.focus_sessions));
         }
 
         if (window.api) {
@@ -1227,6 +1376,10 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
       localStorage.removeItem(LOCAL_STORAGE_KEY_TRIGGER_RULES);
       localStorage.removeItem(LOCAL_STORAGE_KEY_ROUTINES);
       localStorage.removeItem(LOCAL_STORAGE_KEY_SHIELDS);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_FOCUS_SESSIONS);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_TIMER);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_HABIT_FOCUS_GOALS);
+      soundscapeEngine.stop();
 
       set({
         habits: [],
@@ -1240,6 +1393,8 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         triggerRules: [],
         routines: DEFAULT_ROUTINES,
         streakShields: DEFAULT_SHIELDS,
+        focusSessions: [],
+    activeHabitTimer: null,
         activeRoutineRunner: null,
         routineManagerOpen: false,
       });
@@ -1642,6 +1797,154 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
       localStorage.setItem(LOCAL_STORAGE_KEY_SHIELDS, JSON.stringify(updatedState));
       set({ streakShields: updatedState });
       sound.playCelebration();
+    },
+
+    logFocusSession: async ({ habit_id, habit_name, duration_minutes, soundscape, autoCheckin }) => {
+      const todayStr = formatLocalDate(get().currentDate);
+      const newSession: FocusSession = {
+        id: `fs_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+        habit_id,
+        habit_name,
+        duration_minutes,
+        soundscape,
+        date: todayStr,
+        completed_at: new Date().toISOString(),
+      };
+
+      const nextSessions = [newSession, ...(get().focusSessions || [])].slice(0, 500);
+      localStorage.setItem(LOCAL_STORAGE_KEY_FOCUS_SESSIONS, JSON.stringify(nextSessions));
+      set({ focusSessions: nextSessions });
+
+      if (autoCheckin && habit_id) {
+        const habit = get().habits.find((h) => h.id === habit_id);
+        if (habit) {
+          if (habit.type === 'numeric') {
+            await get().updateNumericValue(habit.id, todayStr, duration_minutes, true);
+          } else {
+            const existing = get().checkins[`${habit.id}_${todayStr}`];
+            if (!existing?.completed) {
+              await get().toggleCheckin(habit.id, todayStr);
+            }
+          }
+        }
+      }
+
+      sound.playCelebration();
+    },
+
+    startHabitTimer: (habit, overrideMinutes, mode = 'countdown') => {
+      const existing = get().activeHabitTimer;
+      if (existing && existing.habitId === habit.id) {
+        // Resume if paused
+        if (!existing.startedAtMs) {
+          const resumed: ActiveHabitTimer = { ...existing, startedAtMs: Date.now() };
+          persistActiveTimer(resumed);
+          set({ activeHabitTimer: resumed });
+          if (resumed.soundscape !== 'none') soundscapeEngine.play(resumed.soundscape);
+        }
+        return;
+      }
+
+      const targetMins =
+        overrideMinutes ??
+        (habit.daily_focus_minutes && habit.daily_focus_minutes > 0
+          ? habit.daily_focus_minutes
+          : habit.type === 'numeric' && (habit.unit || '').toLowerCase().includes('min')
+          ? habit.target_value || 25
+          : 25);
+
+      const newTimer: ActiveHabitTimer = {
+        habitId: habit.id,
+        habitName: habit.name,
+        habitColor: habit.color || '#6366f1',
+        targetSeconds: Math.max(60, Math.round(targetMins * 60)),
+        accumulatedSeconds: 0,
+        startedAtMs: Date.now(),
+        mode,
+        soundscape: existing?.soundscape || 'none',
+        notifiedTargetReached: false,
+      };
+
+      persistActiveTimer(newTimer);
+      set({ activeHabitTimer: newTimer });
+      if (newTimer.soundscape !== 'none') soundscapeEngine.play(newTimer.soundscape);
+      sound.playClick();
+    },
+
+    pauseHabitTimer: () => {
+      const t = get().activeHabitTimer;
+      if (!t || !t.startedAtMs) return;
+      const elapsedDelta = Math.max(0, Math.floor((Date.now() - t.startedAtMs) / 1000));
+      const paused: ActiveHabitTimer = {
+        ...t,
+        accumulatedSeconds: t.accumulatedSeconds + elapsedDelta,
+        startedAtMs: null,
+      };
+      persistActiveTimer(paused);
+      set({ activeHabitTimer: paused });
+      soundscapeEngine.stop();
+    },
+
+    resumeHabitTimer: () => {
+      const t = get().activeHabitTimer;
+      if (!t || t.startedAtMs) return;
+      const resumed: ActiveHabitTimer = {
+        ...t,
+        startedAtMs: Date.now(),
+      };
+      persistActiveTimer(resumed);
+      set({ activeHabitTimer: resumed });
+      if (resumed.soundscape !== 'none') soundscapeEngine.play(resumed.soundscape);
+    },
+
+    stopAndLogHabitTimer: async (autoCheckin = true) => {
+      const t = get().activeHabitTimer;
+      if (!t) return 0;
+
+      const elapsedDelta = t.startedAtMs ? Math.max(0, Math.floor((Date.now() - t.startedAtMs) / 1000)) : 0;
+      const totalSeconds = t.accumulatedSeconds + elapsedDelta;
+      const elapsedMinutes = Math.max(1, Math.round(totalSeconds / 60));
+
+      soundscapeEngine.stop();
+      persistActiveTimer(null);
+      set({ activeHabitTimer: null });
+
+      if (totalSeconds >= 10) {
+        await get().logFocusSession({
+          habit_id: t.habitId,
+          habit_name: t.habitName,
+          duration_minutes: elapsedMinutes,
+          soundscape: t.soundscape,
+          autoCheckin,
+        });
+      }
+      return elapsedMinutes;
+    },
+
+    discardHabitTimer: () => {
+      soundscapeEngine.stop();
+      persistActiveTimer(null);
+      set({ activeHabitTimer: null });
+    },
+
+    setHabitTimerSoundscape: (soundscape) => {
+      const t = get().activeHabitTimer;
+      if (!t) return;
+      const next: ActiveHabitTimer = { ...t, soundscape };
+      persistActiveTimer(next);
+      set({ activeHabitTimer: next });
+      if (next.startedAtMs) {
+        if (soundscape === 'none') soundscapeEngine.stop();
+        else soundscapeEngine.play(soundscape);
+      }
+    },
+
+    markHabitTimerTargetNotified: () => {
+      const t = get().activeHabitTimer;
+      if (!t || t.notifiedTargetReached) return;
+      const next: ActiveHabitTimer = { ...t, notifiedTargetReached: true };
+      persistActiveTimer(next);
+      set({ activeHabitTimer: next });
     },
   };
 });

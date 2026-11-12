@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useHabitStore } from '../../store/useHabitStore';
 import { formatLocalDate } from '../../lib/dateUtils';
 import { playStepComplete, playTimerChime, sound } from '../../lib/audio';
+import { sendOsNotification } from '../../lib/reminders';
 import { X, Play, Pause, RotateCcw, Plus, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Flame, Clock } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { RoutineStack } from '../../lib/types';
@@ -83,6 +84,10 @@ const RoutineRunnerModalContent: React.FC<RunnerProps> = ({ activeRoutine }) => 
     } else {
       setIsCompleted(true);
       sound.playCelebration();
+      void sendOsNotification(
+        'Routine Complete!',
+        `Awesome work finishing "${activeRoutine.title}"!`
+      );
       try {
         confetti({
           particleCount: 80,

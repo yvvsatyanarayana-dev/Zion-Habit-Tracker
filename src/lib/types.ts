@@ -16,6 +16,7 @@ export interface Habit {
   target_value?: number; // e.g. 2000 ml, 20 pages
   unit?: string; // e.g. "ml", "pages", "mins", "km"
   category?: HabitCategory; // 'health' | 'mind' | 'work' | 'routine'
+  daily_focus_minutes?: number; // e.g. 180 for 3hrs daily timer goal
 }
 
 export interface Checkin {
@@ -248,4 +249,50 @@ export interface SmartInsightsReport {
   wellness_correlations: WellnessCorrelation[];
   danger_zones: DangerZoneAlert[];
   golden_habit: { habit: Habit; boost_percentage: number; synergy_count: number } | null;
+}
+
+// ───────────────────────────────────────────────
+// Feature 4: Deep Focus Studio & Ambient Soundscapes
+// ───────────────────────────────────────────────
+export type SoundscapeType = 'none' | 'brown_noise' | 'rain' | 'gamma_40hz' | 'lofi_pad';
+
+export interface FocusSession {
+  id: string;
+  habit_id?: string;
+  habit_name: string;
+  duration_minutes: number;
+  soundscape: SoundscapeType;
+  date: string; // YYYY-MM-DD
+  completed_at: string;
+}
+
+export interface ActiveHabitTimer {
+  habitId: string;
+  habitName: string;
+  habitColor: string;
+  targetSeconds: number; // e.g. 10800 for 3 hours, or 1500 for 25m
+  accumulatedSeconds: number; // elapsed seconds before current run
+  startedAtMs: number | null; // epoch ms when running, null when paused
+  mode: 'countdown' | 'stopwatch';
+  soundscape: SoundscapeType;
+  notifiedTargetReached: boolean;
+}
+
+// ───────────────────────────────────────────────
+// Feature 5: Habit Mastery XP & Rank System
+// ───────────────────────────────────────────────
+export interface MasteryInfo {
+  xp: number;
+  level: number;
+  rank: string;
+  rankColor: string;
+  currentLevelXp: number;
+  nextLevelXp: number;
+  progressPct: number;
+  breakdown: {
+    checkinsXp: number;
+    focusXp: number;
+    streakXp: number;
+    wellnessXp: number;
+  };
 }

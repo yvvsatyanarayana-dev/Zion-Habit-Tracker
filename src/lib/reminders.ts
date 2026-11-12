@@ -122,3 +122,46 @@ export async function dismissAndroidReminder(notificationId: number): Promise<vo
   if (!isAndroidApp()) return;
   await LocalNotifications.removeDeliveredNotificationsById({ ids: [notificationId] });
 }
+
+/**
+ * Fires a real OS-level notification across Windows (Electron), Android (Capacitor),
+ * and standard Web browsers.
+ */
+export async function sendOsNotification(title: string, body: string): Promise<void> {
+  try {
+    if (typeof window !== 'undefined' && (window as unknown as { api?: { notify?: (t: string, b: string) => void } }).api?.notify) {
+      (window as unknown as { api: { notify: (t: string, b: string) => void } }).api.notify(title, body);
+      return;
+    }
+
+    if (isAndroidApp()) {
+      const perm = await LocalNotifications.checkPermissions();
+      if (perm.display === 'granted') {
+        await LocalNotifications.createChannel({
+          id: DAILY_REMINDER_CHANNEL_ID,
+          name: 'Daily reminders',
+          description: 'Habit and focus session notifications.',
+          importance: 4,
+        });
+        await LocalNotifications.schedule({
+          notifications: [
+            {
+              id: Math.floor(Date.now() % 1000000) + 100,
+              title,
+              body,
+              channelId: DAILY_REMINDER_CHANNEL_ID,
+              schedule: { at: new Date(Date.now() + 250) },
+            },
+          ],
+        });
+      }
+      return;
+    }
+
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+      new Notification(title, { body });
+    }
+  } catch (err) {
+    console.warn('OS notification failed:', err);
+  }
+}

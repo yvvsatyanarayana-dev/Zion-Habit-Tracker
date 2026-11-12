@@ -8,6 +8,7 @@ import { TodayHabitsCard } from '../components/dashboard/TodayHabitsCard';
 import { WeeksCardSection } from '../components/dashboard/WeeksCardSection';
 import { TopHabitsSection } from '../components/dashboard/TopHabitsSection';
 import { CategoryFilterBar } from '../components/ui/CategoryFilterBar';
+import { DailyBriefingCard } from '../components/dashboard/DailyBriefingCard';
 import { EmptyHabitsState } from '../components/habits/EmptyHabitsState';
 import { useHabitStore } from '../store/useHabitStore';
 import { Layers, Play } from 'lucide-react';
@@ -27,6 +28,9 @@ export const DashboardPage: React.FC = () => {
         <EmptyHabitsState />
       ) : (
         <>
+          {/* Smart Daily Briefing & Quick Studio Actions */}
+          <DailyBriefingCard />
+
           {/* Quick Routine Flow Launcher Bar */}
           <div
             className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 p-3 sm:p-3.5 rounded-2xl border bg-white/[0.02]"

@@ -21,6 +21,10 @@ import { MobileHeader, MobileNavigation } from './components/ui/MobileChrome';
 import { UpdateBanner } from './components/ui/UpdateBanner';
 import { RoutineRunnerModal } from './components/routines/RoutineRunnerModal';
 import { RoutineManagerModal } from './components/routines/RoutineManagerModal';
+import { FocusStudioModal } from './components/focus/FocusStudioModal';
+import { LiveHabitTimerBar } from './components/focus/LiveHabitTimerBar';
+import { ShareCardModal } from './components/ui/ShareCardModal';
+import { WellnessLogEntry } from './components/ui/WellnessLogEntry';
 import {
   DAILY_REMINDER_STOP_ACTION,
   dismissAndroidReminder,
@@ -36,6 +40,9 @@ export const App: React.FC = () => {
   const reduceMotion = useHabitStore((s) => s.settings.reduce_motion);
   const isLoading = useHabitStore((s) => s.isLoading);
   const setSidebarCollapsed = useHabitStore((s) => s.setSidebarCollapsed);
+  const wellnessModalOpen = useHabitStore((s) => s.wellnessModalOpen);
+  const setWellnessModalOpen = useHabitStore((s) => s.setWellnessModalOpen);
+  const currentDate = useHabitStore((s) => s.currentDate);
 
   // Initialize store from SQLite/localStorage on launch
   useEffect(() => {
@@ -202,6 +209,14 @@ export const App: React.FC = () => {
         <WeeklyReviewModal />
         <RoutineRunnerModal />
         <RoutineManagerModal />
+        <FocusStudioModal />
+        <LiveHabitTimerBar />
+        <ShareCardModal />
+        <WellnessLogEntry
+          isOpen={wellnessModalOpen}
+          onClose={() => setWellnessModalOpen(false)}
+          date={currentDate}
+        />
         <UpdateBanner />
       </ErrorBoundary>
     </div>

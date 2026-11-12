@@ -1,6 +1,7 @@
 import type { Habit, Checkin, AppSettings, HabitDependency, WellnessLog, SkipReasonEntry, UserProfile } from './types';
 import { generateMonthDays, formatLocalDate } from './dateUtils';
 import { isHabitScheduledOnDay, computeStreakStats, computeHabitsMonthlyProgress } from './statsUtils';
+import { APP_VERSION } from './constants';
 
 export interface ExportResult {
   success: boolean;
@@ -450,7 +451,7 @@ export function generateFullBackupJSON(
 
   const payload: FullBackupPayload = {
     app: 'Zion Habit Tracker Studio',
-    version: '1.1.1',
+    version: APP_VERSION,
     exported_at: new Date().toISOString(),
     metrics: {
       total_habits: habits.length,

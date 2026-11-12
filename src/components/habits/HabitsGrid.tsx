@@ -20,6 +20,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Sparkles,
+  Play,
+  Timer,
 } from 'lucide-react';
 import { HabitIconView } from '../../lib/habitIcons';
 import confetti from 'canvas-confetti';
@@ -44,6 +46,9 @@ export const HabitsGrid: React.FC = () => {
   const deleteHabit = useHabitStore((s) => s.deleteHabit);
   const reorderHabits = useHabitStore((s) => s.reorderHabits);
   const openHabitModal = useHabitStore((s) => s.openHabitModal);
+  const activeHabitTimer = useHabitStore((s) => s.activeHabitTimer);
+  const startHabitTimer = useHabitStore((s) => s.startHabitTimer);
+  const setFocusStudioOpen = useHabitStore((s) => s.setFocusStudioOpen);
 
   const selectedYear = useHabitStore((s) => s.selectedYear);
   const selectedMonth = useHabitStore((s) => s.selectedMonth);
@@ -730,6 +735,46 @@ export const HabitsGrid: React.FC = () => {
                             >
                               {habit.name}
                             </span>
+
+                            {/* Real-Time Habit Focus Timer Button */}
+                            {(() => {
+                              const isTimerActive = activeHabitTimer?.habitId === habit.id;
+                              const goalMins = habit.daily_focus_minutes;
+                              const goalLabel = goalMins
+                                ? goalMins >= 60
+                                  ? `${+(goalMins / 60).toFixed(1)}h`
+                                  : `${goalMins}m`
+                                : null;
+                              return (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (isTimerActive) {
+                                      setFocusStudioOpen(true);
+                                    } else {
+                                      startHabitTimer(habit);
+                                    }
+                                  }}
+                                  style={{
+                                    backgroundColor: isTimerActive ? `${habit.color}25` : 'var(--bg-surface-elevated)',
+                                    borderColor: isTimerActive ? habit.color : 'var(--border-subtle)',
+                                    color: isTimerActive ? habit.color : 'var(--text-secondary)',
+                                  }}
+                                  className={`h-5 px-1.5 rounded-[4px] border text-[10px] font-bold flex items-center gap-1 shrink-0 hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] transition-colors cursor-pointer ${
+                                    isTimerActive ? 'animate-pulse' : ''
+                                  }`}
+                                  title={
+                                    isTimerActive
+                                      ? `Timer running for "${habit.name}" — click to open Focus Studio`
+                                      : `Start ${goalLabel || '25m'} real-time timer for "${habit.name}"`
+                                  }
+                                >
+                                  {isTimerActive ? <Timer size={10} /> : <Play size={9} fill="currentColor" />}
+                                  <span>{isTimerActive ? 'LIVE' : goalLabel || 'Timer'}</span>
+                                </button>
+                              );
+                            })()}
 
                             {/* Quick edit & delete icons on hover */}
                             <div className="hidden group-hover:flex items-center gap-0.5">
