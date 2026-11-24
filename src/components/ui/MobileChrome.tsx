@@ -232,6 +232,17 @@ export const MobileHubDrawer: React.FC = () => {
   const level = levelInfo.level;
   const title = getRankTitle(level);
 
+  const isAvatarLight =
+    !currentUser?.avatarColor ||
+    currentUser.avatarColor.toLowerCase() === '#ffffff' ||
+    currentUser.avatarColor.toLowerCase() === '#fff' ||
+    currentUser.avatarColor.toLowerCase() === 'white' ||
+    currentUser.avatarColor.toLowerCase() === '#f4f4f5' ||
+    currentUser.avatarColor.toLowerCase() === '#e4e4e7';
+
+  const avatarBg = currentUser?.avatarColor || '#6366f1';
+  const avatarTextColor = isAvatarLight ? '#09090b' : '#ffffff';
+
   const handleNav = (tab: TabType) => {
     setTab(tab);
     setMobileMenuOpen(false);
@@ -259,11 +270,12 @@ export const MobileHubDrawer: React.FC = () => {
         className="relative z-10 w-full max-h-[85vh] rounded-t-3xl border-t border-x flex flex-col overflow-hidden animate-slide-up shadow-2xl"
       >
         {/* Drag Handle & Top Bar */}
-        <div className="pt-3 pb-2 px-5 flex items-center justify-between border-b border-white/5">
-          <div className="w-10 h-1 bg-white/20 rounded-full mx-auto" />
+        <div className="h-12 px-5 flex items-center justify-center border-b border-white/[0.08] relative">
+          <div className="w-10 h-1 bg-white/20 rounded-full" />
           <button
             onClick={() => setMobileMenuOpen(false)}
-            className="absolute right-4 top-3 p-1.5 rounded-full text-zinc-400 hover:text-white bg-white/5 hover:bg-white/10"
+            className="absolute right-4 top-1/2 -translate-y-1/2 p-2 rounded-full text-zinc-400 hover:text-white bg-white/10 hover:bg-white/15 active:scale-95 transition-all cursor-pointer"
+            aria-label="Close"
           >
             <X size={16} />
           </button>
@@ -279,9 +291,11 @@ export const MobileHubDrawer: React.FC = () => {
             <div className="flex items-center gap-3 min-w-0">
               <div
                 style={{
-                  backgroundColor: currentUser?.avatarColor || '#6366f1',
+                  backgroundColor: avatarBg,
+                  color: avatarTextColor,
+                  border: isAvatarLight ? '1.5px solid #d4d4d8' : '1px solid rgba(255, 255, 255, 0.08)',
                 }}
-                className="w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-white shadow-md text-base shrink-0"
+                className="w-11 h-11 rounded-2xl flex items-center justify-center font-black shadow-md text-base shrink-0"
               >
                 {currentUser?.name?.[0]?.toUpperCase() || 'Z'}
               </div>

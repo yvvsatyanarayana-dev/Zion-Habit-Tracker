@@ -198,25 +198,25 @@ export const AndroidWidgetStudioModal: React.FC<Props> = ({ isOpen, onClose }) =
                   borderColor: getThemeBorder(),
                   boxShadow: '0 16px 40px rgba(0, 0, 0, 0.7)',
                 }}
-                className="w-full max-w-sm rounded-[20dp] p-3.5 border transition-all"
+                className="w-full max-w-sm rounded-[20px] p-3.5 border transition-all"
               >
                 {/* Header */}
-                <div className="flex items-center justify-between pb-2.5 mb-2.5 border-b border-white/10">
+                <div className="flex items-center justify-between pb-2 mb-2">
                   <div className="flex items-center gap-2">
                     <div className="w-5 h-5 rounded-md bg-indigo-600 flex items-center justify-center text-[10px] font-black text-white">
                       Z
                     </div>
                     <div>
-                      <div className="text-xs font-bold text-white tracking-tight">Zion Protocol</div>
-                      <div className="text-[9.5px] text-zinc-400">Today's Mission</div>
+                      <div className="text-xs font-bold text-white tracking-tight">ZION</div>
+                      <div className="text-[9.5px] text-zinc-400">Today's Protocol</div>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-[9.5px] font-bold font-mono px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/30">
-                      🔥 {streakStats.currentStreak} Days
+                      🔥 {streakStats.currentStreak}d
                     </span>
                     <span className="text-[9.5px] font-bold font-mono px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
-                      {completionPct}% Done
+                      {completionPct}%
                     </span>
                   </div>
                 </div>
@@ -247,7 +247,7 @@ export const AndroidWidgetStudioModal: React.FC<Props> = ({ isOpen, onClose }) =
                           </span>
                         </div>
                         <span className="text-[9px] font-mono text-zinc-500">
-                          {isDone ? 'COMPLETED' : 'PENDING'}
+                          {isDone ? 'DONE' : 'PENDING'}
                         </span>
                       </div>
                     );
@@ -255,7 +255,7 @@ export const AndroidWidgetStudioModal: React.FC<Props> = ({ isOpen, onClose }) =
                 </div>
 
                 {/* Bottom Action Pills */}
-                <div className="mt-3 pt-2.5 border-t border-white/5 flex items-center gap-1.5">
+                <div className="mt-2.5 pt-2 flex items-center gap-1.5">
                   <div className="flex-1 py-1 rounded-md bg-zinc-800 border border-zinc-700 text-center text-[10px] font-bold text-white">
                     Open Zion
                   </div>
@@ -277,7 +277,7 @@ export const AndroidWidgetStudioModal: React.FC<Props> = ({ isOpen, onClose }) =
                   borderColor: getThemeBorder(),
                   boxShadow: '0 16px 40px rgba(0, 0, 0, 0.7)',
                 }}
-                className="w-full max-w-sm rounded-[20dp] p-3.5 border transition-all flex items-center justify-between"
+                className="w-full max-w-sm rounded-[20px] p-3.5 border transition-all flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400">

@@ -96,15 +96,15 @@ public class ZionHabitWidgetProvider extends AppWidgetProvider {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 
         // Date Label
-        SimpleDateFormat sdf = new SimpleDateFormat("EEEE, MMM d", Locale.getDefault());
+        SimpleDateFormat sdf = new SimpleDateFormat("EEE, MMM d", Locale.getDefault());
         String dateFormatted = prefs.getString("current_date_str", sdf.format(new Date()));
         views.setTextViewText(R.id.widget_date, dateFormatted);
 
         // Streak & Progress Badges
         int streak = prefs.getInt("streak", 1);
         int completionPct = prefs.getInt("completion_pct", 0);
-        views.setTextViewText(R.id.widget_streak_badge, "🔥 " + streak + " Day" + (streak == 1 ? "" : "s"));
-        views.setTextViewText(R.id.widget_progress_badge, completionPct + "% Done");
+        views.setTextViewText(R.id.widget_streak_badge, "🔥 " + streak + "d");
+        views.setTextViewText(R.id.widget_progress_badge, completionPct + "%");
 
         // Parse habits JSON
         String habitsRaw = prefs.getString("habits_json", "[]");
@@ -117,6 +117,7 @@ public class ZionHabitWidgetProvider extends AppWidgetProvider {
             int count = Math.min(arr.length(), 4);
 
             if (count == 0) {
+                views.setTextViewText(R.id.widget_empty_state, "Open Zion to track habits ✦");
                 views.setViewVisibility(R.id.widget_empty_state, View.VISIBLE);
                 for (int r : rowIds) {
                     views.setViewVisibility(r, View.GONE);

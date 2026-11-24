@@ -10,11 +10,10 @@
 
     <ImageView
         android:id="@+id/widget_timer_icon"
-        android:layout_width="38dp"
-        android:layout_height="38dp"
-        android:background="@drawable/widget_pill_accent"
-        android:padding="8dp"
-        android:src="@drawable/widget_check_done" />
+        android:layout_width="36dp"
+        android:layout_height="36dp"
+        android:contentDescription="Timer"
+        android:src="@drawable/widget_timer_clock_icon" />
 
     <LinearLayout
         android:layout_width="0dp"

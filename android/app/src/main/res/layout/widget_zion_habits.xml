@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="@drawable/widget_bg_obsidian"
     android:orientation="vertical"
-    android:padding="14dp">
+    android:padding="12dp">
 
     <!-- Header Section -->
     <LinearLayout
@@ -17,10 +17,10 @@
 
         <ImageView
             android:id="@+id/widget_logo"
-            android:layout_width="22dp"
-            android:layout_height="22dp"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
             android:contentDescription="Zion"
-            android:src="@mipmap/ic_launcher_round" />
+            android:src="@drawable/widget_logo_icon" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -33,16 +33,16 @@
                 android:id="@+id/widget_title"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Zion Protocol"
+                android:text="ZION"
                 android:textColor="#ffffff"
-                android:textSize="13sp"
+                android:textSize="12sp"
                 android:textStyle="bold" />
 
             <TextView
                 android:id="@+id/widget_date"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Today's Mission"
+                android:text="Today"
                 android:textColor="#a1a1aa"
                 android:textSize="10sp" />
         </LinearLayout>
@@ -56,7 +56,7 @@
             android:paddingTop="2dp"
             android:paddingEnd="7dp"
             android:paddingBottom="2dp"
-            android:text="🔥 1 Streak"
+            android:text="🔥 1d"
             android:textColor="#f59e0b"
             android:textSize="10sp"
             android:textStyle="bold" />
@@ -65,30 +65,24 @@
             android:id="@+id/widget_progress_badge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
+            android:layout_marginStart="5dp"
             android:background="@drawable/widget_pill_accent"
             android:paddingStart="7dp"
             android:paddingTop="2dp"
             android:paddingEnd="7dp"
             android:paddingBottom="2dp"
-            android:text="0% Done"
+            android:text="0%"
             android:textColor="#c7d2fe"
             android:textSize="10sp"
             android:textStyle="bold" />
     </LinearLayout>
-
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="1dp"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="8dp"
-        android:background="#27272a" />
 
     <!-- Habit Items List (Interactive RemoteViews) -->
     <LinearLayout
         android:id="@+id/widget_habits_list"
         android:layout_width="match_parent"
         android:layout_height="0dp"
+        android:layout_marginTop="8dp"
         android:layout_weight="1"
         android:orientation="vertical">
 
@@ -101,15 +95,16 @@
             android:background="@drawable/widget_item_bg"
             android:gravity="center_vertical"
             android:paddingStart="8dp"
-            android:paddingTop="5dp"
+            android:paddingTop="6dp"
             android:paddingEnd="8dp"
-            android:paddingBottom="5dp"
+            android:paddingBottom="6dp"
             android:visibility="visible">
 
             <ImageView
                 android:id="@+id/widget_habit_1_check"
                 android:layout_width="20dp"
                 android:layout_height="20dp"
+                android:contentDescription="Check"
                 android:src="@drawable/widget_check_undone" />
 
             <TextView
@@ -134,15 +129,16 @@
             android:background="@drawable/widget_item_bg"
             android:gravity="center_vertical"
             android:paddingStart="8dp"
-            android:paddingTop="5dp"
+            android:paddingTop="6dp"
             android:paddingEnd="8dp"
-            android:paddingBottom="5dp"
+            android:paddingBottom="6dp"
             android:visibility="visible">
 
             <ImageView
                 android:id="@+id/widget_habit_2_check"
                 android:layout_width="20dp"
                 android:layout_height="20dp"
+                android:contentDescription="Check"
                 android:src="@drawable/widget_check_undone" />
 
             <TextView
@@ -167,15 +163,16 @@
             android:background="@drawable/widget_item_bg"
             android:gravity="center_vertical"
             android:paddingStart="8dp"
-            android:paddingTop="5dp"
+            android:paddingTop="6dp"
             android:paddingEnd="8dp"
-            android:paddingBottom="5dp"
+            android:paddingBottom="6dp"
             android:visibility="visible">
 
             <ImageView
                 android:id="@+id/widget_habit_3_check"
                 android:layout_width="20dp"
                 android:layout_height="20dp"
+                android:contentDescription="Check"
                 android:src="@drawable/widget_check_undone" />
 
             <TextView
@@ -199,15 +196,16 @@
             android:background="@drawable/widget_item_bg"
             android:gravity="center_vertical"
             android:paddingStart="8dp"
-            android:paddingTop="5dp"
+            android:paddingTop="6dp"
             android:paddingEnd="8dp"
-            android:paddingBottom="5dp"
+            android:paddingBottom="6dp"
             android:visibility="visible">
 
             <ImageView
                 android:id="@+id/widget_habit_4_check"
                 android:layout_width="20dp"
                 android:layout_height="20dp"
+                android:contentDescription="Check"
                 android:src="@drawable/widget_check_undone" />
 
             <TextView
@@ -229,7 +227,7 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:gravity="center"
-            android:text="All habits completed! Great work today."
+            android:text="All protocols complete today ✦"
             android:textColor="#71717a"
             android:textSize="12sp"
             android:visibility="gone" />
@@ -240,7 +238,7 @@
         android:id="@+id/widget_footer"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="6dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
@@ -253,7 +251,7 @@
             android:gravity="center"
             android:text="Open Zion"
             android:textColor="#ffffff"
-            android:textSize="10.5sp"
+            android:textSize="11sp"
             android:textStyle="bold" />
 
         <TextView
@@ -266,7 +264,7 @@
             android:gravity="center"
             android:text="+ Habit"
             android:textColor="#a5b4fc"
-            android:textSize="10.5sp"
+            android:textSize="11sp"
             android:textStyle="bold" />
 
         <TextView
@@ -279,7 +277,7 @@
             android:gravity="center"
             android:text="⚡ Focus"
             android:textColor="#34d399"
-            android:textSize="10.5sp"
+            android:textSize="11sp"
             android:textStyle="bold" />
     </LinearLayout>
 </LinearLayout>
