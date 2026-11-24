@@ -16,6 +16,10 @@ import {
   X,
   User,
   BookOpen,
+  CalendarClock,
+  Share2,
+  Camera,
+  Swords,
   type LucideIcon,
 } from 'lucide-react';
 import { useHabitStore } from '../../store/useHabitStore';
@@ -36,10 +40,11 @@ interface NavItem {
 const mainNavItems: NavItem[] = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, shortcut: 'Ctrl+1' },
   { id: 'habits', label: 'Daily Habits', icon: CheckSquare, shortcut: 'Ctrl+2' },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3, shortcut: 'Ctrl+3' },
-  { id: 'streaks', label: 'Streaks & Medals', icon: Flame, shortcut: 'Ctrl+4' },
-  { id: 'profile', label: 'User Profile', icon: User, shortcut: 'Ctrl+5' },
-  { id: 'guide', label: 'User Guide', icon: BookOpen, shortcut: 'Ctrl+6' },
+  { id: 'timetable', label: 'Timetable', icon: CalendarClock, shortcut: 'Ctrl+3' },
+  { id: 'analytics', label: 'Analytics', icon: BarChart3, shortcut: 'Ctrl+4' },
+  { id: 'streaks', label: 'Streaks & Medals', icon: Flame, shortcut: 'Ctrl+5' },
+  { id: 'profile', label: 'User Profile', icon: User, shortcut: 'Ctrl+6' },
+  { id: 'guide', label: 'User Guide', icon: BookOpen, shortcut: 'Ctrl+7' },
 ];
 
 export const Sidebar: React.FC = () => {
@@ -51,11 +56,14 @@ export const Sidebar: React.FC = () => {
   const openHabitModal = useHabitStore((s) => s.openHabitModal);
   const toggleCheckin = useHabitStore((s) => s.toggleCheckin);
   const jumpToToday = useHabitStore((s) => s.jumpToToday);
+  const setSynergyGraphModalOpen = useHabitStore((s) => s.setSynergyGraphModalOpen);
+  const setTimeCapsuleModalOpen = useHabitStore((s) => s.setTimeCapsuleModalOpen);
+  const setP2PDuelModalOpen = useHabitStore((s) => s.setP2PDuelModalOpen);
   
-  const habits = useHabitStore((s) => s.habits || []);
-  const checkins = useHabitStore((s) => s.checkins || {});
-  const allCheckinsList = useHabitStore((s) => s.allCheckinsList || []);
-  const currentDate = useHabitStore((s) => s.currentDate || new Date());
+  const habits = useHabitStore((s) => s.habits);
+  const checkins = useHabitStore((s) => s.checkins);
+  const allCheckinsList = useHabitStore((s) => s.allCheckinsList);
+  const currentDate = useHabitStore((s) => s.currentDate);
   const clockFormat = useHabitStore((s) => s.settings?.clock_format);
   const streakThreshold = useHabitStore((s) => s.settings?.streak_threshold ?? 50);
 
@@ -384,6 +392,82 @@ export const Sidebar: React.FC = () => {
               );
             })}
           </nav>
+
+          {/* Supercharged Features: Synergy Graph, Time Capsule, P2P Duels */}
+          <div className="pt-2 border-t border-[var(--border-subtle)] space-y-1">
+            {!sidebarCollapsed ? (
+              <>
+                <div className="px-2 py-1 text-[10px] font-mono uppercase tracking-wider text-[var(--text-muted)] font-bold">
+                  Ecosystem & Duels
+                </div>
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button
+                    onClick={() => setSynergyGraphModalOpen(true)}
+                    style={{
+                      backgroundColor: 'var(--bg-surface-elevated)',
+                      borderColor: 'var(--border-subtle)',
+                      color: 'var(--text-secondary)',
+                    }}
+                    className="p-2 rounded-xl border hover:border-[var(--border-medium)] hover:text-[var(--text-primary)] flex flex-col items-center gap-1 transition-all cursor-pointer shadow-xs"
+                    title="Habit Stacking & Synergy Graph"
+                  >
+                    <Share2 size={13} className="text-indigo-400" />
+                    <span className="text-[10px] font-semibold">Synergy</span>
+                  </button>
+                  <button
+                    onClick={() => setTimeCapsuleModalOpen(true)}
+                    style={{
+                      backgroundColor: 'var(--bg-surface-elevated)',
+                      borderColor: 'var(--border-subtle)',
+                      color: 'var(--text-secondary)',
+                    }}
+                    className="p-2 rounded-xl border hover:border-[var(--border-medium)] hover:text-[var(--text-primary)] flex flex-col items-center gap-1 transition-all cursor-pointer shadow-xs"
+                    title="Identity Time Capsule & Photo Proofs"
+                  >
+                    <Camera size={13} className="text-amber-400" />
+                    <span className="text-[10px] font-semibold">Capsule</span>
+                  </button>
+                  <button
+                    onClick={() => setP2PDuelModalOpen(true)}
+                    style={{
+                      backgroundColor: 'var(--bg-surface-elevated)',
+                      borderColor: 'var(--border-subtle)',
+                      color: 'var(--text-secondary)',
+                    }}
+                    className="p-2 rounded-xl border hover:border-[var(--border-medium)] hover:text-[var(--text-primary)] flex flex-col items-center gap-1 transition-all cursor-pointer shadow-xs"
+                    title="P2P Habit Duels & WebRTC Accountability"
+                  >
+                    <Swords size={13} className="text-rose-400" />
+                    <span className="text-[10px] font-semibold">Duels</span>
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="flex flex-col items-center gap-1.5 py-1">
+                <button
+                  onClick={() => setSynergyGraphModalOpen(true)}
+                  className="w-8 h-8 rounded-lg border border-[var(--border-subtle)] flex items-center justify-center text-indigo-400 hover:bg-[var(--bg-surface-hover)] cursor-pointer"
+                  title="Habit Synergy Graph"
+                >
+                  <Share2 size={14} />
+                </button>
+                <button
+                  onClick={() => setTimeCapsuleModalOpen(true)}
+                  className="w-8 h-8 rounded-lg border border-[var(--border-subtle)] flex items-center justify-center text-amber-400 hover:bg-[var(--bg-surface-hover)] cursor-pointer"
+                  title="Time Capsule"
+                >
+                  <Camera size={14} />
+                </button>
+                <button
+                  onClick={() => setP2PDuelModalOpen(true)}
+                  className="w-8 h-8 rounded-lg border border-[var(--border-subtle)] flex items-center justify-center text-rose-400 hover:bg-[var(--bg-surface-hover)] cursor-pointer"
+                  title="P2P Duels"
+                >
+                  <Swords size={14} />
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 

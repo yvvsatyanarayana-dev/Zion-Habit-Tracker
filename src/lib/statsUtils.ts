@@ -30,11 +30,14 @@ export function computeMonthDayStats(
   let totalCompleted = 0;
   let totalScheduled = 0;
 
+  // Precompute scheduled habits per weekday to avoid repeated filtering for each day
+  const scheduledByWeekday = Array.from({ length: 7 }, (_, wday) =>
+    activeHabits.filter((h) => isHabitScheduledOnDay(h, wday))
+  );
+
   const resultDays = days.map((day) => {
-    // Scheduled habits for this day
-    const scheduledHabits = activeHabits.filter((h) =>
-      isHabitScheduledOnDay(h, day.weekday)
-    );
+    // Scheduled habits for this day (O(1) weekday lookup)
+    const scheduledHabits = scheduledByWeekday[day.weekday];
     const scheduledCount = scheduledHabits.length;
 
     // Completed habits for this day
@@ -49,7 +52,8 @@ export function computeMonthDayStats(
 
     const rate = scheduledCount > 0 ? completedCount / scheduledCount : 0;
     const thresholdRate = streakThresholdPercent / 100;
-    const isStreakDay = scheduledCount > 0 && rate >= thresholdRate;
+    const minRequired = Math.max(1, Math.floor(scheduledCount * thresholdRate));
+    const isStreakDay = scheduledCount > 0 && (completedCount >= minRequired || rate >= thresholdRate);
 
     // Accumulate for days up to today (or past days)
     if (!day.isFuture) {
@@ -90,6 +94,9 @@ export function computeActivityRings(
   month: { completed: number; total: number; rate: number };
 } {
   const activeHabits = habits.filter((h) => !h.archived);
+  const scheduledByWeekday = Array.from({ length: 7 }, (_, wday) =>
+    activeHabits.filter((h) => isHabitScheduledOnDay(h, wday))
+  );
   const todayStr = formatLocalDate(today);
   const todayWeekday = today.getDay();
 
@@ -112,7 +119,7 @@ export function computeActivityRings(
     const cur = addDays(weekStart, i);
     const dateStr = formatLocalDate(cur);
     const wday = cur.getDay();
-    const scheduled = activeHabits.filter((h) => isHabitScheduledOnDay(h, wday));
+    const scheduled = scheduledByWeekday[wday];
     weekTotal += scheduled.length;
     for (const h of scheduled) {
       if (checkins[`${h.id}_${dateStr}`]?.completed) {
@@ -206,12 +213,17 @@ export function computeStreakStats(
     }
   }
 
+  // Precompute scheduled habits per weekday (0-6) for O(1) lookups
+  const scheduledByWeekday = Array.from({ length: 7 }, (_, wday) =>
+    activeHabits.filter((h) => isHabitScheduledOnDay(h, wday))
+  );
+
   // Count perfect days (all scheduled habits completed on that day, with at least 1 scheduled habit)
   let perfectDaysCount = 0;
   for (const [dateStr, completedHabitIds] of checkinsByDate.entries()) {
     const d = parseLocalDate(dateStr);
     const wday = d.getDay();
-    const scheduled = activeHabits.filter((h) => isHabitScheduledOnDay(h, wday));
+    const scheduled = scheduledByWeekday[wday];
     if (scheduled.length > 0 && scheduled.every((h) => completedHabitIds.has(h.id))) {
       perfectDaysCount++;
     }
@@ -228,7 +240,7 @@ export function computeStreakStats(
 
     const completedSet = checkinsByDate.get(dateStr);
     const wday = date.getDay();
-    const scheduled = activeHabits.filter((h) => isHabitScheduledOnDay(h, wday));
+    const scheduled = scheduledByWeekday[wday];
 
     // If no habits are scheduled for this day:
     if (scheduled.length === 0) {
@@ -243,16 +255,17 @@ export function computeStreakStats(
       if (completedSet.has(h.id)) completed++;
     }
 
-    // Require completion percentage >= threshold AND at least 1 completion
+    // Require completion count >= Math.floor(scheduled.length * threshold) OR percentage >= threshold
+    // Ensures odd habit counts (e.g. 2 out of 5 for a 50% threshold) don't unfairly break momentum
+    const minRequired = Math.max(1, Math.floor(scheduled.length * (streakThresholdPercent / 100)));
     const rate = completed / scheduled.length;
-    return rate >= streakThresholdPercent / 100 && completed > 0;
+    return (completed >= minRequired || rate >= streakThresholdPercent / 100) && completed > 0;
   };
 
   // Helper to check if a day is a rest day (0 scheduled habits)
   const isRestDay = (date: Date): boolean => {
     const wday = date.getDay();
-    const scheduled = activeHabits.filter((h) => isHabitScheduledOnDay(h, wday));
-    return scheduled.length === 0;
+    return scheduledByWeekday[wday].length === 0;
   };
 
   // Compute Current Streak

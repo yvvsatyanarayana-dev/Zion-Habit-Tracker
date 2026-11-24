@@ -1,15 +1,23 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card } from '../ui/Card';
 import { useHabitStore } from '../../store/useHabitStore';
-import { Shield, Sparkles, AlertCircle, CheckCircle2, History, Zap, Calendar } from 'lucide-react';
+import { Shield, Sparkles, AlertCircle, CheckCircle2, History, Zap, Calendar, Check } from 'lucide-react';
 import { formatLocalDate } from '../../lib/dateUtils';
+import { computeStreakStats } from '../../lib/statsUtils';
 import { subDays } from 'date-fns';
 
 export const StreakShieldCard: React.FC = () => {
   const streakShields = useHabitStore((s) => s.streakShields);
   const applyShield = useHabitStore((s) => s.applyShield);
   const startResurrectionQuest = useHabitStore((s) => s.startResurrectionQuest);
-  const currentDate = useHabitStore((s) => s.currentDate || new Date());
+  const currentDate = useHabitStore((s) => s.currentDate);
+  const habits = useHabitStore((s) => s.habits);
+  const allCheckinsList = useHabitStore((s) => s.allCheckinsList);
+  const streakThreshold = useHabitStore((s) => s.settings.streak_threshold ?? 50);
+
+  const streakStats = useMemo(() => {
+    return computeStreakStats(habits, allCheckinsList, streakThreshold, currentDate);
+  }, [habits, allCheckinsList, streakThreshold, currentDate]);
 
   const [selectedDate, setSelectedDate] = useState(() => formatLocalDate(subDays(currentDate, 1)));
   const [feedback, setFeedback] = useState<{ message: string; isError?: boolean } | null>(null);
@@ -29,10 +37,11 @@ export const StreakShieldCard: React.FC = () => {
   };
 
   const handleStartQuest = async () => {
-    // Start quest for reviving a broken streak (default 7 days if not known)
-    await startResurrectionQuest(7);
+    // Dynamic real-time streak restoration calculated from user's actual longest streak
+    const lostCount = Math.max(3, streakStats.longestStreak || 3);
+    await startResurrectionQuest(lostCount);
     setFeedback({
-      message: '⚡ 3-Day Resurrection Quest activated! Complete all 3 days to resurrect your streak.',
+      message: `3-Day Resurrection Quest activated! Complete all 3 days to resurrect your ${lostCount}-day streak.`,
     });
     setTimeout(() => setFeedback(null), 4000);
   };
@@ -154,13 +163,14 @@ export const StreakShieldCard: React.FC = () => {
                   return (
                     <div
                       key={dayNum}
-                      className={`py-2 rounded-xl text-center text-xs font-bold border transition-all ${
+                      className={`py-2 rounded-xl text-center text-xs font-bold border transition-all flex items-center justify-center gap-1 ${
                         done
                           ? 'bg-amber-500/20 border-amber-500 text-amber-300'
                           : 'bg-white/5 border-white/5 text-zinc-500'
                       }`}
                     >
-                      Day {dayNum} {done ? '✓' : ''}
+                      <span>Day {dayNum}</span>
+                      {done && <Check size={12} className="text-amber-300" />}
                     </div>
                   );
                 })}
@@ -189,9 +199,9 @@ export const StreakShieldCard: React.FC = () => {
           {recentEvents.map((evt) => (
             <span
               key={evt.id}
-              className="px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-[11px] font-mono"
+              className="px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 text-[11px] font-mono inline-flex items-center gap-1"
             >
-              🛡️ {evt.date}
+              <Shield size={10} /> {evt.date}
             </span>
           ))}
         </div>

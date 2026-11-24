@@ -11,6 +11,8 @@ import {
   Calendar,
   Sparkles,
   Shield,
+  ShieldAlert,
+  Brain,
   Palette,
   Sun,
   Moon,
@@ -24,6 +26,9 @@ import {
   CheckCircle2,
   Copy,
   FileText,
+  Trash2,
+  AlertTriangle,
+  Smartphone,
   X,
 } from 'lucide-react';
 import type { WeekStartDay, ClockFormat, DensityMode } from '../lib/types';
@@ -40,6 +45,7 @@ import {
   isAndroidApp,
   showAndroidTestReminder,
   syncAndroidDailyReminder,
+  sendOsNotification,
 } from '../lib/reminders';
 
 export const SettingsPage: React.FC = () => {
@@ -47,6 +53,7 @@ export const SettingsPage: React.FC = () => {
   const updateSetting = useHabitStore((s) => s.updateSetting);
   const importData = useHabitStore((s) => s.importData);
   const resetAllData = useHabitStore((s) => s.resetAllData);
+  const uninstallApp = useHabitStore((s) => s.uninstallApp);
   const habits = useHabitStore((s) => s.habits);
   const checkins = useHabitStore((s) => s.checkins);
   const allCheckinsList = useHabitStore((s) => s.allCheckinsList);
@@ -55,9 +62,17 @@ export const SettingsPage: React.FC = () => {
   const skipReasons = useHabitStore((s) => s.skipReasons);
   const usersList = useHabitStore((s) => s.usersList);
   const currentDate = useHabitStore((s) => s.currentDate);
+  const setFocusShieldModalOpen = useHabitStore((s) => s.setFocusShieldModalOpen);
+  const setGhostDebriefOpen = useHabitStore((s) => s.setGhostDebriefOpen);
+  const setCircadianModalOpen = useHabitStore((s) => s.setCircadianModalOpen);
+  const setAndroidWidgetStudioOpen = useHabitStore((s) => s.setAndroidWidgetStudioOpen);
 
   const [notificationStatus, setNotificationStatus] = useState<string>('');
   const [resetModalOpen, setResetModalOpen] = useState(false);
+  const [uninstallModalOpen, setUninstallModalOpen] = useState(false);
+  const [uninstallInput, setUninstallInput] = useState('');
+  const [isWipingData, setIsWipingData] = useState(false);
+  const [isUninstalling, setIsUninstalling] = useState(false);
   const [pasteModalOpen, setPasteModalOpen] = useState(false);
   const [pasteContent, setPasteContent] = useState('');
   const [pasteStatus, setPasteStatus] = useState<string | null>(null);
@@ -188,14 +203,16 @@ export const SettingsPage: React.FC = () => {
       if (isAndroid) {
         const status = await showAndroidTestReminder();
         setNotificationStatus(status ?? 'Test notification will arrive in a few seconds.');
-      } else if (window.api) {
-        const sent = await window.api.notify(
-          'Habit Tracker Reminder',
-          'Time to close your daily activity rings! Keep the momentum going.'
-        );
-        setNotificationStatus(sent ? 'Desktop notification sent successfully!' : 'Desktop notifications not enabled.');
       } else {
-        setNotificationStatus('Notifications are available in the installed Android or Electron app.');
+        const sent = await sendOsNotification(
+          'Zion Habit Tracker',
+          '⚡ Daily Momentum Alert: Time to complete your daily protocol and protect your streaks!'
+        );
+        setNotificationStatus(
+          sent
+            ? 'Desktop notification dispatched successfully!'
+            : 'Could not display notification. Check OS permissions in Windows Settings.'
+        );
       }
     } catch (error) {
       console.error('Failed to send test reminder:', error);
@@ -203,7 +220,7 @@ export const SettingsPage: React.FC = () => {
         error instanceof Error ? error.message : 'Could not send the test notification. Check notification permissions.'
       );
     }
-    setTimeout(() => setNotificationStatus(''), 4000);
+    setTimeout(() => setNotificationStatus(''), 4500);
   };
 
   const handleReminderTimeChange = async (reminderTime: string) => {
@@ -599,6 +616,23 @@ export const SettingsPage: React.FC = () => {
             />
           </div>
 
+          {/* Allow Editing Past Days */}
+          <div className="flex items-center justify-between">
+            <div>
+              <span style={{ color: 'var(--text-primary)' }} className="text-[14px] font-semibold block">
+                Allow Past Day Edits
+              </span>
+              <span style={{ color: 'var(--text-secondary)' }} className="text-[12px]">
+                Enable checking or editing habits for previous dates. When disabled, only today's tasks can be marked.
+              </span>
+            </div>
+            <ToggleSwitch
+              checked={Boolean(settings.allow_past_edits)}
+              onChange={(checked) => updateSetting('allow_past_edits', checked)}
+              ariaLabel="Toggle allow past day edits"
+            />
+          </div>
+
         </Card>
 
         {/* SECTION: OPERATING SYSTEM & DESKTOP INTEGRATION */}
@@ -743,6 +777,168 @@ export const SettingsPage: React.FC = () => {
                 </button>
               </div>
             )}
+
+            {/* Feature: Android Home Screen Widgets */}
+            <div
+              className="flex items-center justify-between p-3.5 rounded-[12px] border"
+              style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}
+            >
+              <div className="pr-3">
+                <span style={{ color: 'var(--text-primary)' }} className="text-[14px] font-semibold flex items-center gap-2">
+                  <span>Android Home Screen Widgets</span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold">
+                    WIDGETS
+                  </span>
+                </span>
+                <span style={{ color: 'var(--text-secondary)' }} className="text-[12px]">
+                  1-Tap home screen check-ins, consistency streaks, live countdown timer HUD, and instant OS pinning
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  setAndroidWidgetStudioOpen(true);
+                }}
+                style={{
+                  backgroundColor: 'var(--bg-surface-elevated)',
+                  borderColor: 'var(--border-subtle)',
+                  color: 'var(--text-primary)',
+                }}
+                className="px-3 py-1.5 rounded-[10px] text-[12px] font-semibold flex items-center gap-1.5 transition-colors border hover:bg-[var(--bg-surface-hover)] cursor-pointer whitespace-nowrap"
+              >
+                <Smartphone size={13} className="text-emerald-400" />
+                <span>Configure Widgets</span>
+              </button>
+            </div>
+
+            {/* Feature 1: Dynamic Floating HUD Island */}
+            {!isAndroid && (
+              <div className="flex items-center justify-between p-3.5 rounded-[12px] border" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
+                <div className="pr-3">
+                  <span style={{ color: 'var(--text-primary)' }} className="text-[14px] font-semibold flex items-center gap-2">
+                    <span>Dynamic Floating HUD Island</span>
+                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-bold">
+                      Ctrl+Alt+Space
+                    </span>
+                  </span>
+                  <span style={{ color: 'var(--text-secondary)' }} className="text-[12px]">
+                    Always-on-top micro dock with 1-click habit check-in, focus countdown, and taskbar progress
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sound.playClick();
+                    void window.api?.os?.toggleTimerWidget?.();
+                  }}
+                  style={{
+                    backgroundColor: 'var(--bg-surface-elevated)',
+                    borderColor: 'var(--border-subtle)',
+                    color: 'var(--text-primary)',
+                  }}
+                  className="px-3 py-1.5 rounded-[10px] text-[12px] font-semibold flex items-center gap-1.5 transition-colors border hover:bg-[var(--bg-surface-hover)] cursor-pointer whitespace-nowrap"
+                >
+                  <Sparkles size={13} style={{ color: '#818cf8' }} />
+                  <span>Toggle Island</span>
+                </button>
+              </div>
+            )}
+
+            {/* Feature 2: System-Level Focus Shield */}
+            {!isAndroid && (
+              <div className="flex items-center justify-between p-3.5 rounded-[12px] border" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
+                <div className="pr-3">
+                  <span style={{ color: 'var(--text-primary)' }} className="text-[14px] font-semibold flex items-center gap-2">
+                    <span>System-Level Focus Shield</span>
+                    <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 font-bold">
+                      ACTIVE
+                    </span>
+                  </span>
+                  <span style={{ color: 'var(--text-secondary)' }} className="text-[12px]">
+                    Lock distracting Windows apps & websites during active routines and deep focus sessions
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sound.playClick();
+                    setFocusShieldModalOpen(true);
+                  }}
+                  style={{
+                    backgroundColor: 'var(--bg-surface-elevated)',
+                    borderColor: 'var(--border-subtle)',
+                    color: 'var(--text-primary)',
+                  }}
+                  className="px-3 py-1.5 rounded-[10px] text-[12px] font-semibold flex items-center gap-1.5 transition-colors border hover:bg-[var(--bg-surface-hover)] cursor-pointer whitespace-nowrap"
+                >
+                  <Shield size={13} style={{ color: '#10b981' }} />
+                  <span>Configure Shield</span>
+                </button>
+              </div>
+            )}
+
+            {/* Feature 3: The Ghost Protocol */}
+            <div className="flex items-center justify-between p-3.5 rounded-[12px] border" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
+              <div className="pr-3">
+                <span style={{ color: 'var(--text-primary)' }} className="text-[14px] font-semibold flex items-center gap-2">
+                  <span>The Ghost Protocol</span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-pink-500/15 border border-pink-500/30 text-pink-300 font-bold">
+                    Ctrl+Shift+G
+                  </span>
+                </span>
+                <span style={{ color: 'var(--text-secondary)' }} className="text-[12px]">
+                  Offline Stoic executive appraisal, behavioral friction bottleneck audit, and tomorrow's directives
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  setGhostDebriefOpen(true);
+                }}
+                style={{
+                  backgroundColor: 'rgba(236, 72, 153, 0.1)',
+                  borderColor: 'rgba(236, 72, 153, 0.25)',
+                  color: '#f472b6',
+                }}
+                className="px-3 py-1.5 rounded-[10px] text-[12px] font-semibold flex items-center gap-1.5 transition-colors border hover:bg-pink-500/20 cursor-pointer whitespace-nowrap"
+              >
+                <ShieldAlert size={13} />
+                <span>Run AI Debrief</span>
+              </button>
+            </div>
+
+            {/* Feature 4: Neural Circadian Forecast & Burnout Predictor */}
+            <div className="flex items-center justify-between p-3.5 rounded-[12px] border" style={{ borderColor: 'var(--border-subtle)', backgroundColor: 'var(--bg-surface)' }}>
+              <div className="pr-3">
+                <span style={{ color: 'var(--text-primary)' }} className="text-[14px] font-semibold flex items-center gap-2">
+                  <span>Neural Circadian Forecast & Burnout Predictor</span>
+                  <span className="text-[9px] font-mono px-1.5 py-0.2 rounded bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 font-bold">
+                    Ctrl+Shift+C
+                  </span>
+                </span>
+                <span style={{ color: 'var(--text-secondary)' }} className="text-[12px]">
+                  Offline biological rhythm modeling, peak cognitive focus windows, atomic habit synergies & burnout mitigation
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  sound.playClick();
+                  setCircadianModalOpen(true);
+                }}
+                style={{
+                  backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                  borderColor: 'rgba(99, 102, 241, 0.25)',
+                  color: '#818cf8',
+                }}
+                className="px-3 py-1.5 rounded-[10px] text-[12px] font-semibold flex items-center gap-1.5 transition-colors border hover:bg-indigo-500/20 cursor-pointer whitespace-nowrap"
+              >
+                <Brain size={13} />
+                <span>View Bioclock AI</span>
+              </button>
+            </div>
           </div>
 
           {notificationStatus && (
@@ -902,18 +1098,59 @@ export const SettingsPage: React.FC = () => {
             </button>
           </div>
 
-          <div className="pt-2 border-t border-[var(--border-subtle)] flex items-center justify-between">
-            <span style={{ color: 'var(--text-muted)' }} className="text-xs">
-              Danger Zone
+          <div className="pt-3 border-t border-[var(--border-subtle)] space-y-3">
+            <span style={{ color: 'var(--text-muted)' }} className="text-[11px] font-mono font-bold uppercase tracking-wider block">
+              Danger Zone & System Management
             </span>
-            <button
-              type="button"
-              onClick={() => setResetModalOpen(true)}
-              className="text-xs font-semibold text-rose-400 hover:text-rose-300 transition-colors flex items-center gap-1.5 cursor-pointer touch-manipulation px-3 py-1.5 rounded-lg border border-rose-500/20 bg-rose-500/10"
+
+            {/* Option 1: Clear All System Data (Start Fresh) */}
+            <div
+              className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-[12px] border gap-3"
+              style={{ borderColor: 'rgba(244, 63, 94, 0.25)', backgroundColor: 'rgba(244, 63, 94, 0.04)' }}
             >
-              <RotateCcw size={13} />
-              <span>Reset All Data</span>
-            </button>
+              <div className="pr-0 sm:pr-3">
+                <span className="text-[13.5px] font-bold text-rose-400 flex items-center gap-2">
+                  <RotateCcw size={14} />
+                  <span>Clear All System Data (Start Fresh)</span>
+                </span>
+                <span style={{ color: 'var(--text-secondary)' }} className="text-[12px] block mt-0.5 leading-relaxed">
+                  Clear all habits, check-ins, timetable schedules, streaks, and user profiles in real time to start completely fresh.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setResetModalOpen(true)}
+                className="px-3.5 py-1.5 rounded-[10px] text-[12px] font-bold bg-rose-500/15 text-rose-400 border border-rose-500/30 hover:bg-rose-500/25 transition-all cursor-pointer whitespace-nowrap self-start sm:self-center"
+              >
+                Clear Data
+              </button>
+            </div>
+
+            {/* Option 2: Uninstall Zion Permanently */}
+            <div
+              className="flex flex-col sm:flex-row sm:items-center justify-between p-3.5 rounded-[12px] border gap-3"
+              style={{ borderColor: 'rgba(239, 68, 68, 0.4)', backgroundColor: 'rgba(239, 68, 68, 0.07)' }}
+            >
+              <div className="pr-0 sm:pr-3">
+                <span className="text-[13.5px] font-bold text-red-500 flex items-center gap-2">
+                  <Trash2 size={14} />
+                  <span>Uninstall Zion & Erase Entire App</span>
+                </span>
+                <span style={{ color: 'var(--text-secondary)' }} className="text-[12px] block mt-0.5 leading-relaxed">
+                  Permanently remove Zion from your system and delete all offline SQLite databases, caches, logs, and files. There will be no data left.
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setUninstallInput('');
+                  setUninstallModalOpen(true);
+                }}
+                className="px-3.5 py-1.5 rounded-[10px] text-[12px] font-bold bg-red-600 hover:bg-red-500 text-white shadow-md hover:shadow-red-600/30 transition-all cursor-pointer whitespace-nowrap self-start sm:self-center"
+              >
+                Uninstall App
+              </button>
+            </div>
           </div>
         </Card>
 
@@ -1180,60 +1417,175 @@ export const SettingsPage: React.FC = () => {
         </div>
       )}
 
-      {/* Reset Confirmation Modal */}
+      {/* Clear Data & Start Fresh Modal */}
       {resetModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/65 backdrop-blur-[8px] animate-in fade-in duration-200">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-[10px] animate-in fade-in duration-200">
           <div
             style={{
               backgroundColor: 'var(--bg-surface-elevated)',
               borderColor: 'var(--border-subtle)',
               boxShadow: 'var(--shadow-dropdown)',
             }}
-            className="border max-w-md w-full rounded-[20px] p-6 text-center"
+            className="border max-w-md w-full rounded-[22px] p-6 text-center select-none"
           >
             <div
               style={{
                 backgroundColor: 'rgba(244, 63, 94, 0.12)',
                 color: 'var(--status-danger)',
               }}
-              className="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4"
+              className="w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-rose-500/25 shadow-lg shadow-rose-500/10"
             >
-              <RotateCcw size={24} />
+              <RotateCcw size={26} className={isWipingData ? 'animate-spin' : ''} />
             </div>
             <h3
               style={{ color: 'var(--text-primary)' }}
-              className="text-[19px] font-bold"
+              className="text-xl font-bold tracking-tight"
             >
-              Reset All Habit Data?
+              Clear All Data & Start Fresh?
             </h3>
-            <p style={{ color: 'var(--text-secondary)' }} className="text-[13px] mt-2 mb-6">
-              This action will erase all habits, daily check-ins, streaks, and custom settings. This cannot be undone.
+            <p style={{ color: 'var(--text-secondary)' }} className="text-[13px] mt-2 mb-6 leading-relaxed">
+              This will wipe all habits, daily logs, timetable blocks, custom routines, and user accounts from your system in real time. The app will immediately start fresh.
             </p>
             <div className="flex items-center justify-center gap-3">
               <button
                 type="button"
+                disabled={isWipingData}
                 onClick={() => setResetModalOpen(false)}
                 style={{
                   backgroundColor: 'var(--bg-surface)',
                   borderColor: 'var(--border-subtle)',
                   color: 'var(--text-primary)',
                 }}
-                className="px-5 py-2.5 rounded-[10px] border text-[13px] font-semibold transition-colors hover:bg-[var(--bg-surface-hover)] cursor-pointer"
+                className="px-5 py-2.5 rounded-[12px] border text-[13px] font-semibold transition-colors hover:bg-[var(--bg-surface-hover)] cursor-pointer disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 type="button"
+                disabled={isWipingData}
                 onClick={async () => {
-                  await resetAllData();
-                  setResetModalOpen(false);
+                  setIsWipingData(true);
+                  try {
+                    sound.playClick();
+                    await resetAllData();
+                    setResetModalOpen(false);
+                    setNotificationStatus('All system data cleared. Started completely fresh!');
+                    setTimeout(() => setNotificationStatus(''), 4500);
+                  } finally {
+                    setIsWipingData(false);
+                  }
+                }}
+                className="px-5 py-2.5 rounded-[12px] bg-rose-600 hover:bg-rose-500 text-white text-[13px] font-bold transition-all shadow-md hover:shadow-rose-600/30 cursor-pointer disabled:opacity-50 flex items-center gap-2"
+              >
+                {isWipingData ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" />
+                    <span>Clearing Data...</span>
+                  </>
+                ) : (
+                  <span>Clear Data & Start Fresh</span>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Permanent Uninstall & Total System Data Erasure Modal */}
+      {uninstallModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-[12px] animate-in fade-in duration-200">
+          <div
+            style={{
+              backgroundColor: 'var(--bg-surface-elevated)',
+              borderColor: 'rgba(239, 68, 68, 0.4)',
+              boxShadow: '0 25px 60px -15px rgba(239, 68, 68, 0.3)',
+            }}
+            className="border max-w-lg w-full rounded-[24px] p-6 text-center select-none"
+          >
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 bg-red-500/15 text-red-500 border border-red-500/30 shadow-xl shadow-red-500/10">
+              <Trash2 size={30} className={isUninstalling ? 'animate-pulse' : ''} />
+            </div>
+
+            <h3
+              style={{ color: 'var(--text-primary)' }}
+              className="text-xl font-bold tracking-tight text-red-400"
+            >
+              Permanent Uninstall & Complete Data Erase
+            </h3>
+
+            <div className="my-4 p-3.5 rounded-xl bg-red-950/40 border border-red-500/30 text-left text-xs text-red-200/90 leading-relaxed space-y-1.5">
+              <div className="font-bold flex items-center gap-1.5 text-red-300">
+                <AlertTriangle size={14} />
+                <span>IRREVERSIBLE SYSTEM ACTION</span>
+              </div>
+              <p>
+                This will completely delete all local SQLite databases, personal habit tracking logs, caches, user profiles, and application settings from your operating system. Zion's uninstaller will run to permanently remove all application files. <strong>No data will be left.</strong>
+              </p>
+            </div>
+
+            <div className="mb-6 text-left">
+              <label className="block text-[12px] font-semibold text-[var(--text-secondary)] mb-1.5">
+                To confirm permanent deletion, type <span className="font-mono font-bold text-red-400 select-all">UNINSTALL</span> below:
+              </label>
+              <input
+                type="text"
+                value={uninstallInput}
+                onChange={(e) => setUninstallInput(e.target.value.toUpperCase())}
+                placeholder="Type UNINSTALL"
+                disabled={isUninstalling}
+                style={{
+                  backgroundColor: 'var(--bg-surface)',
+                  borderColor: uninstallInput === 'UNINSTALL' ? '#ef4444' : 'var(--border-subtle)',
+                  color: 'var(--text-primary)',
+                }}
+                className="w-full px-3.5 py-2.5 rounded-[12px] border text-sm font-mono tracking-wider outline-none transition-all focus:border-red-500 text-center font-bold"
+              />
+            </div>
+
+            <div className="flex items-center justify-center gap-3">
+              <button
+                type="button"
+                disabled={isUninstalling}
+                onClick={() => {
+                  setUninstallModalOpen(false);
+                  setUninstallInput('');
                 }}
                 style={{
-                  backgroundColor: 'var(--status-danger)',
+                  backgroundColor: 'var(--bg-surface)',
+                  borderColor: 'var(--border-subtle)',
+                  color: 'var(--text-primary)',
                 }}
-                className="px-5 py-2.5 rounded-[10px] text-white text-[13px] font-bold transition-all hover:brightness-110 cursor-pointer"
+                className="px-5 py-2.5 rounded-[12px] border text-[13px] font-semibold transition-colors hover:bg-[var(--bg-surface-hover)] cursor-pointer disabled:opacity-50"
               >
-                Yes, Erase Everything
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={uninstallInput !== 'UNINSTALL' || isUninstalling}
+                onClick={async () => {
+                  if (uninstallInput !== 'UNINSTALL') return;
+                  setIsUninstalling(true);
+                  try {
+                    sound.playClick();
+                    await uninstallApp();
+                  } catch (err) {
+                    console.error('Uninstall failed:', err);
+                    setIsUninstalling(false);
+                  }
+                }}
+                className="px-5 py-2.5 rounded-[12px] bg-red-600 hover:bg-red-500 text-white text-[13px] font-bold transition-all shadow-lg hover:shadow-red-600/40 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isUninstalling ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" />
+                    <span>Uninstalling & Wiping App...</span>
+                  </>
+                ) : (
+                  <>
+                    <Trash2 size={14} />
+                    <span>Permanently Delete & Uninstall</span>
+                  </>
+                )}
               </button>
             </div>
           </div>

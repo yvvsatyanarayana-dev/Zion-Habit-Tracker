@@ -6,7 +6,7 @@ import { useHabitStore } from '../../store/useHabitStore';
 import { Trophy, ArrowUpRight, Flame, Sparkles } from 'lucide-react';
 import { HabitIconView } from '../../lib/habitIcons';
 
-export const TopHabitsSection: React.FC = () => {
+export const TopHabitsSection: React.FC = React.memo(() => {
   const habits = useHabitStore((s) => s.habits);
   const checkins = useHabitStore((s) => s.checkins);
   const selectedYear = useHabitStore((s) => s.selectedYear);
@@ -15,12 +15,16 @@ export const TopHabitsSection: React.FC = () => {
   const showEmoji = useHabitStore((s) => s.settings.show_emoji);
   const openHabitModal = useHabitStore((s) => s.openHabitModal);
 
-  const progressList = computeHabitsMonthlyProgress(
-    habits,
-    checkins,
-    selectedYear,
-    selectedMonth,
-    currentDate
+  const progressList = React.useMemo(
+    () =>
+      computeHabitsMonthlyProgress(
+        habits,
+        checkins,
+        selectedYear,
+        selectedMonth,
+        currentDate
+      ),
+    [habits, checkins, selectedYear, selectedMonth, currentDate]
   );
 
   if (progressList.length === 0) return null;
@@ -146,4 +150,5 @@ export const TopHabitsSection: React.FC = () => {
       </div>
     </div>
   );
-};
+});
+TopHabitsSection.displayName = 'TopHabitsSection';

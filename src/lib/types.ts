@@ -17,6 +17,7 @@ export interface Habit {
   unit?: string; // e.g. "ml", "pages", "mins", "km"
   category?: HabitCategory; // 'health' | 'mind' | 'work' | 'routine'
   daily_focus_minutes?: number; // e.g. 180 for 3hrs daily timer goal
+  user_id?: string;
 }
 
 export interface Checkin {
@@ -40,6 +41,7 @@ export interface AppSettings {
   show_emoji: boolean;
   streak_threshold: number; // percentage, e.g. 50
   allow_future_edits: boolean;
+  allow_past_edits: boolean;
   density: DensityMode;
   reduce_motion: boolean;
   reminder_time: string; // e.g. "20:00" or ""
@@ -61,7 +63,7 @@ export interface UserProfile {
   created_at: string;
 }
 
-export type TabType = 'dashboard' | 'habits' | 'analytics' | 'streaks' | 'settings' | 'profile' | 'guide';
+export type TabType = 'dashboard' | 'habits' | 'timetable' | 'analytics' | 'streaks' | 'settings' | 'profile' | 'guide';
 
 export interface DayStats {
   date: string; // YYYY-MM-DD
@@ -270,6 +272,7 @@ export interface ActiveHabitTimer {
   habitId: string;
   habitName: string;
   habitColor: string;
+  habitEmoji?: string;
   targetSeconds: number; // e.g. 10800 for 3 hours, or 1500 for 25m
   accumulatedSeconds: number; // elapsed seconds before current run
   startedAtMs: number | null; // epoch ms when running, null when paused
@@ -295,4 +298,85 @@ export interface MasteryInfo {
     streakXp: number;
     wellnessXp: number;
   };
+}
+
+// ───────────────────────────────────────────────
+// Feature 6: Studio Timetable & Daily Schedule Engine
+// ───────────────────────────────────────────────
+export type TimetableCategory =
+  | 'cs'         // Computer Science / Coding / Dev
+  | 'english'    // English / Languages / Communication
+  | 'health'     // Exercise, workout, meditation, walk
+  | 'meal'       // Breakfast, lunch, dinner, snacks
+  | 'sleep'      // Night sleep, power nap
+  | 'break'      // Short breaks, relaxation, free time
+  | 'review'     // Revision, testing, review, quiz
+  | 'general';   // General routines & tasks
+
+export interface TimetableBlock {
+  id: string;
+  scheduleId: string;
+  title: string;
+  startTime: string; // '07:45' (HH:mm 24-hr)
+  endTime: string;   // '09:45' (HH:mm 24-hr)
+  category: TimetableCategory;
+  color: string;
+  icon?: string;     // Lucide icon identifier: 'code', 'book', 'dumbbell', etc.
+  emoji?: string;    // Backward compatibility
+  description?: string;
+  soundAlert: boolean;
+  linkedHabitId?: string;
+  sortOrder: number;
+}
+
+export interface TimetableSchedule {
+  id: string;
+  title: string;
+  description: string;
+  daysOfWeek: number[]; // 0=Sunday, 1=Monday... 6=Saturday
+  isActive: boolean;
+  blocks: TimetableBlock[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TimetableBlockExecution {
+  date: string; // YYYY-MM-DD
+  blockId: string;
+  completed: boolean;
+  completedAt?: string;
+}
+
+export interface HabitProof {
+  id: string;
+  habit_id: string;
+  date: string;
+  image_data: string;
+  audio_data?: string;
+  caption?: string;
+  created_at?: string;
+}
+
+export interface HabitStack {
+  id: string;
+  parent_habit_id: string;
+  child_habit_id: string;
+  cue_trigger: 'immediate' | '15m_after' | 'evening';
+  synergy_score: number;
+  created_at?: string;
+}
+
+export interface P2PDuel {
+  id: string;
+  room_code: string;
+  title: string;
+  habit_name: string;
+  target_days: number;
+  stake_xp: number;
+  my_progress: number;
+  peer_name: string;
+  peer_progress: number;
+  status: 'active' | 'completed' | 'abandoned';
+  created_at?: string;
+  updated_at?: string;
 }

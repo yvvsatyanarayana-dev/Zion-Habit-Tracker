@@ -20,7 +20,6 @@ export const WeekdayPerformance: React.FC = () => {
 
   // Map checkins
   const doneCountByDayOfWeek: number[] = [0, 0, 0, 0, 0, 0, 0];
-  const totalCountByDayOfWeek: number[] = [0, 0, 0, 0, 0, 0, 0];
 
   allCheckinsList.forEach((c) => {
     if (c.completed) {
@@ -30,11 +29,23 @@ export const WeekdayPerformance: React.FC = () => {
     }
   });
 
-  // Calculate rate per weekday
+  // Count real occurrences of each weekday in the user's recorded history
+  const uniqueDates = Array.from(new Set(allCheckinsList.map((c) => c.date)));
+  const weekdayOccurrences: number[] = [0, 0, 0, 0, 0, 0, 0];
+  uniqueDates.forEach((dateStr) => {
+    const [y, m, d] = dateStr.split('-').map(Number);
+    if (y && m && d) {
+      const dayOfWeek = new Date(y, m - 1, d).getDay();
+      weekdayOccurrences[dayOfWeek]++;
+    }
+  });
+
+  // Calculate rate per weekday dynamically based on real occurrences
   const stats = weekdays.map((w) => {
     const scheduledHabits = activeHabits.filter((h) => isHabitScheduledOnDay(h, w.id));
     const done = doneCountByDayOfWeek[w.id];
-    const totalPotential = Math.max(done, scheduledHabits.length * 4); // sample window
+    const occurrences = Math.max(1, weekdayOccurrences[w.id]);
+    const totalPotential = Math.max(done, scheduledHabits.length * occurrences);
     const rate = totalPotential > 0 ? Math.min(1, done / totalPotential) : 0;
     return {
       ...w,

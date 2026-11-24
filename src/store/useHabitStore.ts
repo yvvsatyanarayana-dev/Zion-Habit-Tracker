@@ -18,7 +18,23 @@ import type {
   FocusSession,
   SoundscapeType,
   ActiveHabitTimer,
+  TimetableSchedule,
+  TimetableBlock,
+  TimetableCategory,
+  HabitProof,
+  HabitStack,
+  P2PDuel,
 } from '../lib/types';
+import { parseTimetableMarkdown, calculateBlockDurationMinutes } from '../lib/timetableParser';
+import { syncAndroidWidget, syncPendingWidgetToggles } from '../lib/androidWidgetBridge';
+import {
+  type UserRpgProfile,
+  type SkillBranch,
+  createInitialRpgProfile,
+  awardXpToProfile,
+  mapCategoryToBranch,
+} from '../lib/levelingSystem';
+import { cascadeShiftBlocks, snapBlockToNow } from '../lib/scheduleCascade';
 import { APP_VERSION, DEFAULT_SETTINGS, HABIT_PALETTE } from '../lib/constants';
 import { formatLocalDate } from '../lib/dateUtils';
 import { isHabitScheduledOnDay, computeStreakStats } from '../lib/statsUtils';
@@ -55,9 +71,7 @@ const syncTaskbarProgress = (habits: Habit[], checkins: Record<string, Checkin>,
     const scheduledToday = activeHabits.filter((h) => isHabitScheduledOnDay(h, todayWday));
     const doneToday = scheduledToday.filter((h) => checkins[`${h.id}_${todayStr}`]?.completed).length;
 
-    if (scheduledToday.length === 0) {
-      window.api.os.setProgressBar(-1);
-    } else if (doneToday >= scheduledToday.length) {
+    if (scheduledToday.length === 0 || doneToday <= 0 || doneToday >= scheduledToday.length) {
       window.api.os.setProgressBar(-1);
     } else {
       window.api.os.setProgressBar(doneToday / scheduledToday.length);
@@ -93,6 +107,8 @@ interface HabitStoreState {
 
   // UI states & Filters
   sidebarCollapsed: boolean;
+  mobileMenuOpen: boolean;
+  setMobileMenuOpen: (open: boolean) => void;
   commandPaletteOpen: boolean;
   habitModalOpen: boolean;
   editingHabit: Habit | null;
@@ -132,6 +148,7 @@ interface HabitStoreState {
   logoutUser: () => void;
   updateProfile: (data: Partial<UserProfile>) => Promise<void>;
   switchUser: (userId: string) => void;
+  loadUserData: (userId: string) => Promise<void>;
 
   // Date actions
   prevMonth: () => void;
@@ -139,6 +156,7 @@ interface HabitStoreState {
   setMonth: (month: number) => void;
   setYear: (year: number) => void;
   jumpToToday: () => void;
+  selectDate: (date: Date) => void;
   tickClock: (newDate: Date) => void;
 
   // Data actions
@@ -155,6 +173,7 @@ interface HabitStoreState {
   exportData: () => Promise<string>;
   importData: (jsonStr: string) => Promise<boolean>;
   resetAllData: () => Promise<void>;
+  uninstallApp: () => Promise<void>;
 
   // Habit Dependencies actions
   loadDependencies: () => Promise<void>;
@@ -219,11 +238,94 @@ interface HabitStoreState {
   startHabitTimer: (habit: Habit, overrideMinutes?: number, mode?: 'countdown' | 'stopwatch') => void;
   pauseHabitTimer: () => void;
   resumeHabitTimer: () => void;
+  extendHabitTimer: (extraMinutes: number) => void;
   stopAndLogHabitTimer: (autoCheckin?: boolean) => Promise<number>;
   discardHabitTimer: () => void;
   setHabitTimerSoundscape: (soundscape: SoundscapeType) => void;
   markHabitTimerTargetNotified: () => void;
-}
+
+  // Feature 7: Studio Timetable & Daily Schedule Planner
+  timetableSchedules: TimetableSchedule[];
+  timetableExecutions: Record<string, boolean>; // key: `${date}_${blockId}`
+  activeScheduleId: string | null;
+  timetableImportModalOpen: boolean;
+  timetableBlockModalOpen: boolean;
+  selectedTimetableBlock: TimetableBlock | null;
+  selectedScheduleIdForBlock: string | null;
+  loadTimetableSchedules: () => Promise<void>;
+  saveTimetableSchedule: (schedule: TimetableSchedule) => Promise<void>;
+  deleteTimetableSchedule: (scheduleId: string) => Promise<void>;
+  saveTimetableBlock: (scheduleId: string, block: TimetableBlock) => Promise<void>;
+  deleteTimetableBlock: (scheduleId: string, blockId: string) => Promise<void>;
+  toggleTimetableExecution: (date: string, blockId: string) => Promise<void>;
+  setActiveScheduleId: (id: string | null) => void;
+  setTimetableImportModalOpen: (open: boolean) => void;
+  setTimetableBlockModalOpen: (open: boolean, block?: TimetableBlock | null, scheduleId?: string | null) => void;
+  clearAllTimetableSchedules: () => Promise<void>;
+  importTimetableMarkdown: (content: string) => Promise<number>;
+  startTimetableBlockTimer: (block: TimetableBlock) => void;
+
+  // Feature 8: RPG Leveling & Skill Tree Engine
+  rpgProfile: UserRpgProfile;
+  rpgSkillTreeModalOpen: boolean;
+  setRpgSkillTreeModalOpen: (open: boolean) => void;
+  awardXp: (amount: number, branch: SkillBranch, sourceTitle: string) => void;
+
+  // Feature 9: Smart Schedule Shift & Adaptive Routine
+  cascadeShiftActiveSchedule: (startingBlockId: string, shiftMinutes: number) => Promise<void>;
+  snapBlockToCurrentTime: (blockId: string) => Promise<void>;
+
+  // Feature 10: Interactive Timetable Timeline & Zen Studio
+  timetableTimelineViewMode: 'list' | 'timeline';
+  setTimetableTimelineViewMode: (mode: 'list' | 'timeline') => void;
+  zenStudioModalOpen: boolean;
+  setZenStudioModalOpen: (open: boolean) => void;
+
+  // Feature 11: App Blocker & Focus Shield
+  focusShieldModalOpen: boolean;
+  setFocusShieldModalOpen: (open: boolean) => void;
+
+  // Feature: The Ghost Protocol (Offline AI Debrief)
+  ghostDebriefOpen: boolean;
+  setGhostDebriefOpen: (open: boolean) => void;
+
+  // Feature 12: Habit Stacking & Synergy Graph
+  habitStacks: HabitStack[];
+  synergyGraphModalOpen: boolean;
+  loadHabitStacks: () => Promise<void>;
+  saveHabitStack: (stack: { id?: string; parent_habit_id: string; child_habit_id: string; cue_trigger?: 'immediate' | '15m_after' | 'evening'; synergy_score?: number }) => Promise<void>;
+  deleteHabitStack: (id: string) => Promise<void>;
+  setSynergyGraphModalOpen: (open: boolean) => void;
+
+  // Feature 13: Identity Proof Journaling & Time Capsule
+  habitProofs: HabitProof[];
+  timeCapsuleModalOpen: boolean;
+  timeCapsuleHabitId: string | null;
+  loadHabitProofs: (habitId?: string) => Promise<void>;
+  addHabitProof: (proof: { habit_id: string; date: string; image_data: string; audio_data?: string; caption?: string }) => Promise<void>;
+  deleteHabitProof: (id: string, habitId?: string) => Promise<void>;
+  setTimeCapsuleModalOpen: (open: boolean, habitId?: string | null) => void;
+
+  // Feature 14: P2P Accountability Duels
+  p2pDuels: P2PDuel[];
+  p2pDuelModalOpen: boolean;
+  loadP2PDuels: () => Promise<void>;
+  saveP2PDuel: (duel: P2PDuel) => Promise<void>;
+  deleteP2PDuel: (id: string) => Promise<void>;
+  setP2PDuelModalOpen: (open: boolean) => void;
+
+  // Ultra-Advanced Features: Dopamine Vault, Titan Boss Battles, AI Vision Sentinel
+  hardcoreLockdownModalOpen: boolean;
+  setHardcoreLockdownModalOpen: (open: boolean) => void;
+  titanBossArenaModalOpen: boolean;
+  setTitanBossArenaModalOpen: (open: boolean) => void;
+  aiVisionSentinelModalOpen: boolean;
+  setAiVisionSentinelModalOpen: (open: boolean) => void;
+  circadianModalOpen: boolean;
+  setCircadianModalOpen: (open: boolean) => void;
+  androidWidgetStudioOpen: boolean;
+  setAndroidWidgetStudioOpen: (open: boolean) => void;
+  }
 
 // Fallback in-memory / localStorage helpers when running outside Electron
 const LOCAL_STORAGE_KEY_HABITS = 'ht_habits';
@@ -242,6 +344,8 @@ const LOCAL_STORAGE_KEY_SHIELDS = 'ht_shields';
 const LOCAL_STORAGE_KEY_FOCUS_SESSIONS = 'ht_focus_sessions';
 const LOCAL_STORAGE_KEY_ACTIVE_TIMER = 'ht_active_habit_timer';
 const LOCAL_STORAGE_KEY_HABIT_FOCUS_GOALS = 'ht_habit_focus_goals';
+const LOCAL_STORAGE_KEY_TIMETABLE_SCHEDULES = 'ht_timetable_schedules';
+const LOCAL_STORAGE_KEY_TIMETABLE_EXECUTIONS = 'ht_timetable_executions';
 
 const loadHabitFocusGoals = (): Record<string, number> => {
   try {
@@ -280,7 +384,7 @@ const DEFAULT_ROUTINES: RoutineStack[] = [
     id: 'routine-morning-ignition',
     title: 'Morning Ignition Flow',
     description: 'Prime your mind, body, and energy for focused momentum.',
-    emoji: '🌅',
+    emoji: 'sun',
     color: '#f59e0b',
     time_of_day: 'morning',
     steps: [
@@ -294,7 +398,7 @@ const DEFAULT_ROUTINES: RoutineStack[] = [
     id: 'routine-evening-winddown',
     title: 'Evening Wind-Down',
     description: 'Disconnect, celebrate daily progress, and prepare for restorative sleep.',
-    emoji: '🌙',
+    emoji: 'moon',
     color: '#8b5cf6',
     time_of_day: 'evening',
     steps: [
@@ -390,6 +494,56 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
     focusSessions: [],
     activeHabitTimer: null,
 
+    // Feature 7: Studio Timetable & Daily Schedule Planner
+    timetableSchedules: [],
+    timetableExecutions: {},
+    activeScheduleId: null,
+    timetableImportModalOpen: false,
+    timetableBlockModalOpen: false,
+    selectedTimetableBlock: null,
+    selectedScheduleIdForBlock: null,
+    timetableTimelineViewMode: 'list',
+    zenStudioModalOpen: false,
+    focusShieldModalOpen: false,
+    setFocusShieldModalOpen: (open) => set({ focusShieldModalOpen: open }),
+    ghostDebriefOpen: false,
+    setGhostDebriefOpen: (open) => set({ ghostDebriefOpen: open }),
+
+    // Feature 12: Habit Stacking & Synergy Graph
+    habitStacks: [],
+    synergyGraphModalOpen: false,
+
+    // Feature 13: Identity Proof Journaling & Time Capsule
+    habitProofs: [],
+    timeCapsuleModalOpen: false,
+    timeCapsuleHabitId: null,
+
+    // Feature 14: P2P Accountability Duels
+    p2pDuels: [],
+    p2pDuelModalOpen: false,
+
+    // Ultra-Advanced Systems
+    hardcoreLockdownModalOpen: false,
+    setHardcoreLockdownModalOpen: (open) => set({ hardcoreLockdownModalOpen: open }),
+    titanBossArenaModalOpen: false,
+    setTitanBossArenaModalOpen: (open) => set({ titanBossArenaModalOpen: open }),
+    aiVisionSentinelModalOpen: false,
+    setAiVisionSentinelModalOpen: (open) => set({ aiVisionSentinelModalOpen: open }),
+    circadianModalOpen: false,
+    setCircadianModalOpen: (open) => set({ circadianModalOpen: open }),
+    androidWidgetStudioOpen: false,
+    setAndroidWidgetStudioOpen: (open) => set({ androidWidgetStudioOpen: open }),
+    // Feature 8: RPG Leveling & Skill Tree Engine
+    rpgProfile: (() => {
+      try {
+        const saved = typeof window !== 'undefined' ? localStorage.getItem('zion_rpg_profile') : null;
+        return saved ? JSON.parse(saved) : createInitialRpgProfile();
+      } catch {
+        return createInitialRpgProfile();
+      }
+    })(),
+    rpgSkillTreeModalOpen: false,
+
     // Auth & Profile state
     currentUser: initialAuth.currentUser,
     usersList: initialAuth.usersList,
@@ -403,6 +557,8 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
     activeTab: 'dashboard',
 
     sidebarCollapsed: false,
+    mobileMenuOpen: false,
+    setMobileMenuOpen: (open) => set({ mobileMenuOpen: open }),
     commandPaletteOpen: false,
     habitModalOpen: false,
     editingHabit: null,
@@ -447,8 +603,8 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         if (window.api) {
           // Electron environment
           const [dbHabits, dbCheckins, dbSettings, dbDependencies, dbWellnessLogs, dbSkipReasons, dbSkillProgress, dbTriggerRules] = await Promise.all([
-            window.api.habits.getAll(true),
-            window.api.checkins.getAll(),
+            window.api.habits.getAll(true, lastUser?.id),
+            window.api.checkins.getAll(lastUser?.id),
             window.api.settings.getAll(),
             window.api.dependencies.getAll(),
             window.api.wellness.getAll(),
@@ -518,15 +674,21 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           const skillProgressMap: Record<string, SkillProgress> = {};
           // Note: We'll load skill progress on demand per user
 
-          // Parse trigger rules
-          const triggerRules: TriggerRule[] = dbTriggerRules.map(t => ({
-            id: t.id,
-            habit_id: t.habit_id,
-            type: t.type,
-            config: JSON.parse(t.config),
-            enabled: Boolean(t.enabled),
-            created_at: t.created_at,
-          }));
+          // Parse trigger rules safely
+          const triggerRules: TriggerRule[] = dbTriggerRules.map(t => {
+            let parsedCfg = {};
+            try {
+              parsedCfg = typeof t.config === 'string' ? JSON.parse(t.config || '{}') : (t.config || {});
+            } catch {}
+            return {
+              id: t.id,
+              habit_id: t.habit_id,
+              type: t.type,
+              config: parsedCfg as any,
+              enabled: Boolean(t.enabled),
+              created_at: t.created_at,
+            };
+          });
 
           let routines: RoutineStack[] = DEFAULT_ROUTINES;
           const rawRoutines = localStorage.getItem(LOCAL_STORAGE_KEY_ROUTINES);
@@ -602,6 +764,12 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           });
 
           syncTaskbarProgress(parsedHabits, checkinsMap, get().currentDate);
+          await Promise.all([
+            get().loadTimetableSchedules(),
+            get().loadHabitStacks(),
+            get().loadHabitProofs(),
+            get().loadP2PDuels(),
+          ]);
         } else {
           // Browser & Android Capacitor fallback
           const rawHabits = localStorage.getItem(LOCAL_STORAGE_KEY_HABITS);
@@ -730,7 +898,28 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
             prefilledAuthIdentifier: lastUser ? (lastUser.username || lastUser.email) : '',
             isLoading: false,
           });
+
+          await Promise.all([
+            get().loadTimetableSchedules(),
+            get().loadHabitStacks(),
+            get().loadHabitProofs(),
+            get().loadP2PDuels(),
+          ]);
         }
+
+        // Real-Time Android Home Screen Widget sync & pending check-ins
+        void syncAndroidWidget({
+          habits: get().habits,
+          checkins: get().checkins,
+          streak: computeStreakStats(get().habits, get().allCheckinsList, get().settings.streak_threshold, get().currentDate).currentStreak,
+          currentDate: get().currentDate,
+          activeTimer: get().activeHabitTimer ? {
+            habitName: get().activeHabitTimer!.habitName,
+            remainingSeconds: Math.max(0, get().activeHabitTimer!.targetSeconds - get().activeHabitTimer!.accumulatedSeconds),
+            isRunning: Boolean(get().activeHabitTimer!.startedAtMs),
+          } : null,
+        });
+        void syncPendingWidgetToggles((hId, dStr) => get().toggleCheckin(hId, dStr), get().currentDate);
       } catch (err) {
         console.error('Failed to init store:', err);
         set({ isLoading: false });
@@ -739,7 +928,7 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
 
     setTab: (tab) => set({ activeTab: tab }),
     toggleSidebar: () => set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
-    setSidebarCollapsed: (collapsed) => set({ sidebarCollapsed: collapsed }),
+    setSidebarCollapsed: (collapsed) => set((s) => (s.sidebarCollapsed === collapsed ? s : { sidebarCollapsed: collapsed })),
     setCommandPaletteOpen: (open) => set({ commandPaletteOpen: open }),
     
     openHabitModal: (habit) => set({ habitModalOpen: true, editingHabit: habit || null }),
@@ -783,24 +972,46 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
       }));
     },
 
+    selectDate: (date) => {
+      set((state) => ({
+        currentDate: date,
+        selectedYear: date.getFullYear(),
+        selectedMonth: date.getMonth(),
+        todayTrigger: state.todayTrigger + 1,
+      }));
+    },
+
     tickClock: (newDate) => {
       const prev = get().currentDate;
       const prevDateStr = formatLocalDate(prev);
       const newDateStr = formatLocalDate(newDate);
 
       if (prevDateStr !== newDateStr) {
-        // Midnight rollover detected!
+        // Real-time midnight rollover detected!
         set({
           currentDate: newDate,
           selectedYear: newDate.getFullYear(),
           selectedMonth: newDate.getMonth(),
         });
-      } else {
-        set({ currentDate: newDate });
+        syncTaskbarProgress(get().habits, get().checkins, newDate);
       }
     },
 
     toggleCheckin: async (habitId, dateStr) => {
+      const todayStr = formatLocalDate(get().currentDate);
+      const isPast = dateStr < todayStr;
+      const isFuture = dateStr > todayStr;
+      const allowPast = get().settings.allow_past_edits ?? false;
+      const allowFuture = get().settings.allow_future_edits ?? false;
+
+      // Strict date validation: prevent tampering with past/future dates unless explicitly allowed
+      if (isPast && !allowPast) {
+        return;
+      }
+      if (isFuture && !allowFuture) {
+        return;
+      }
+
       const key = `${habitId}_${dateStr}`;
       const existing = get().checkins[key];
       const habit = get().habits.find((h) => h.id === habitId);
@@ -819,6 +1030,9 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           if (willAllBeDone && scheduledToday.length > 0) {
             sound.playCelebration();
           }
+        }
+        if (habit) {
+          get().awardXp(50, mapCategoryToBranch(habit.category || 'routine'), habit.name);
         }
       } else {
         sound.playUncheck();
@@ -887,11 +1101,38 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           console.error('IPC toggleCheckin failed:', err);
         }
       } else {
-        localStorage.setItem(LOCAL_STORAGE_KEY_CHECKINS, JSON.stringify(nextList));
+        const uid = get().currentUser?.id;
+        localStorage.setItem(uid ? `zion_checkins_${uid}` : LOCAL_STORAGE_KEY_CHECKINS, JSON.stringify(nextList));
       }
+
+      // Synchronize changes to native Android home screen widget immediately
+      void syncAndroidWidget({
+        habits: get().habits,
+        checkins: nextCheckins,
+        streak: computeStreakStats(get().habits, nextList, get().settings.streak_threshold, get().currentDate).currentStreak,
+        currentDate: get().currentDate,
+        activeTimer: get().activeHabitTimer ? {
+          habitName: get().activeHabitTimer!.habitName,
+          remainingSeconds: Math.max(0, get().activeHabitTimer!.targetSeconds - get().activeHabitTimer!.accumulatedSeconds),
+          isRunning: Boolean(get().activeHabitTimer!.startedAtMs),
+        } : null,
+      });
     },
 
     updateNumericValue: async (habitId, dateStr, deltaOrValue, isDelta = false) => {
+      const todayStr = formatLocalDate(get().currentDate);
+      const isPast = dateStr < todayStr;
+      const isFuture = dateStr > todayStr;
+      const allowPast = get().settings.allow_past_edits ?? false;
+      const allowFuture = get().settings.allow_future_edits ?? false;
+
+      if (isPast && !allowPast) {
+        return;
+      }
+      if (isFuture && !allowFuture) {
+        return;
+      }
+
       const key = `${habitId}_${dateStr}`;
       const existing = get().checkins[key];
       const habit = get().habits.find((h) => h.id === habitId);
@@ -943,8 +1184,22 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           console.error('IPC toggle checkin failed:', err);
         }
       } else {
-        localStorage.setItem(LOCAL_STORAGE_KEY_CHECKINS, JSON.stringify(nextList));
+        const uid = get().currentUser?.id;
+        localStorage.setItem(uid ? `zion_checkins_${uid}` : LOCAL_STORAGE_KEY_CHECKINS, JSON.stringify(nextList));
       }
+
+      // Synchronize changes to native Android home screen widget immediately
+      void syncAndroidWidget({
+        habits: get().habits,
+        checkins: nextCheckins,
+        streak: computeStreakStats(get().habits, nextList, get().settings.streak_threshold, get().currentDate).currentStreak,
+        currentDate: get().currentDate,
+        activeTimer: get().activeHabitTimer ? {
+          habitName: get().activeHabitTimer!.habitName,
+          remainingSeconds: Math.max(0, get().activeHabitTimer!.targetSeconds - get().activeHabitTimer!.accumulatedSeconds),
+          isRunning: Boolean(get().activeHabitTimer!.startedAtMs),
+        } : null,
+      });
     },
 
     updateCheckinDetails: async (habitId, dateStr, details) => {
@@ -988,8 +1243,22 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           console.error('IPC toggle details failed:', err);
         }
       } else {
-        localStorage.setItem(LOCAL_STORAGE_KEY_CHECKINS, JSON.stringify(nextList));
+        const uid = get().currentUser?.id;
+        localStorage.setItem(uid ? `zion_checkins_${uid}` : LOCAL_STORAGE_KEY_CHECKINS, JSON.stringify(nextList));
       }
+
+      // Synchronize changes to native Android home screen widget immediately
+      void syncAndroidWidget({
+        habits: get().habits,
+        checkins: nextCheckins,
+        streak: computeStreakStats(get().habits, nextList, get().settings.streak_threshold, get().currentDate).currentStreak,
+        currentDate: get().currentDate,
+        activeTimer: get().activeHabitTimer ? {
+          habitName: get().activeHabitTimer!.habitName,
+          remainingSeconds: Math.max(0, get().activeHabitTimer!.targetSeconds - get().activeHabitTimer!.accumulatedSeconds),
+          isRunning: Boolean(get().activeHabitTimer!.startedAtMs),
+        } : null,
+      });
     },
 
     toggleSound: async () => {
@@ -1044,6 +1313,8 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         const usedColors = new Set(habits.map((h) => h.color));
         const autoColor = HABIT_PALETTE.find((c) => !usedColors.has(c)) || HABIT_PALETTE[habits.length % HABIT_PALETTE.length];
 
+        const currentUserId = get().currentUser?.id || localStorage.getItem(LOCAL_STORAGE_KEY_CURRENT_USER_ID) || '';
+
         const newHabit: Habit = {
           id: `h_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
           name: habitData.name || 'New Habit',
@@ -1059,6 +1330,7 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           unit: habitData.unit || '',
           category: habitData.category || 'routine',
           daily_focus_minutes: habitData.daily_focus_minutes,
+          user_id: currentUserId,
         };
 
         saveHabitFocusGoal(newHabit.id, newHabit.daily_focus_minutes);
@@ -1080,9 +1352,10 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
             target_value: newHabit.target_value,
             unit: newHabit.unit,
             category: newHabit.category,
+            user_id: currentUserId,
           });
         } else {
-          localStorage.setItem(LOCAL_STORAGE_KEY_HABITS, JSON.stringify(updatedHabits));
+          localStorage.setItem(currentUserId ? `zion_habits_${currentUserId}` : LOCAL_STORAGE_KEY_HABITS, JSON.stringify(updatedHabits));
         }
       }
     },
@@ -1106,8 +1379,9 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
       if (window.api) {
         await window.api.habits.delete(id);
       } else {
-        localStorage.setItem(LOCAL_STORAGE_KEY_HABITS, JSON.stringify(updatedHabits));
-        localStorage.setItem(LOCAL_STORAGE_KEY_CHECKINS, JSON.stringify(updatedList));
+        const uid = get().currentUser?.id;
+        localStorage.setItem(uid ? `zion_habits_${uid}` : LOCAL_STORAGE_KEY_HABITS, JSON.stringify(updatedHabits));
+        localStorage.setItem(uid ? `zion_checkins_${uid}` : LOCAL_STORAGE_KEY_CHECKINS, JSON.stringify(updatedList));
       }
     },
 
@@ -1132,7 +1406,8 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
       if (window.api) {
         await window.api.habits.reorder(ids);
       } else {
-        localStorage.setItem(LOCAL_STORAGE_KEY_HABITS, JSON.stringify(newHabits));
+        const uid = get().currentUser?.id;
+        localStorage.setItem(uid ? `zion_habits_${uid}` : LOCAL_STORAGE_KEY_HABITS, JSON.stringify(newHabits));
       }
     },
 
@@ -1239,6 +1514,9 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         activeTab: 'dashboard',
       });
 
+      // Load user-scoped routines and habits in real time
+      await get().loadUserData(user.id);
+
       return { success: true };
     },
 
@@ -1249,6 +1527,9 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         currentUser: null,
         authScreen: 'login',
         authMessage: 'You have signed out. Log in to resume tracking.',
+        habits: [],
+        checkins: {},
+        allCheckinsList: [],
       });
     },
 
@@ -1268,7 +1549,7 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
       });
     },
 
-    switchUser: (userId) => {
+    switchUser: async (userId) => {
       const targetUser = get().usersList.find((u) => u.id === userId);
       if (targetUser) {
         localStorage.setItem(LOCAL_STORAGE_KEY_CURRENT_USER_ID, targetUser.id);
@@ -1277,13 +1558,126 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
           authScreen: 'app',
           authMessage: null,
         });
+        await get().loadUserData(targetUser.id);
       } else {
         set({
           currentUser: null,
           authScreen: 'login',
           prefilledAuthIdentifier: '',
           authMessage: null,
+          habits: [],
+          checkins: {},
+          allCheckinsList: [],
         });
+      }
+    },
+
+    loadUserData: async (userId: string) => {
+      set({ isLoading: true });
+      try {
+        if (window.api) {
+          const [dbHabits, dbCheckins, dbDependencies, dbWellnessLogs, dbTriggerRules] = await Promise.all([
+            window.api.habits.getAll(true, userId),
+            window.api.checkins.getAll(userId),
+            window.api.dependencies.getAll(),
+            window.api.wellness.getAll(),
+            window.api.triggers.getAll(),
+          ]);
+
+          const focusGoalsMap = loadHabitFocusGoals();
+          const parsedHabits: Habit[] = dbHabits.map((h) => ({
+            id: h.id,
+            name: h.name,
+            emoji: h.emoji || '',
+            color: h.color,
+            monthly_goal: Number(h.monthly_goal) || 30,
+            schedule_days: JSON.parse(h.schedule_days || '[0,1,2,3,4,5,6]'),
+            sort_order: Number(h.sort_order) || 0,
+            archived: Boolean(h.archived),
+            created_at: h.created_at,
+            type: (h.type as any) || 'boolean',
+            target_value: Number(h.target_value) || 1,
+            unit: h.unit || '',
+            category: (h.category as any) || 'routine',
+            daily_focus_minutes: focusGoalsMap[h.id],
+            user_id: h.user_id || userId,
+          }));
+
+          const checkinsMap: Record<string, Checkin> = {};
+          const checkinsList: Checkin[] = dbCheckins.map((c) => {
+            const item: Checkin = {
+              id: c.id,
+              habit_id: c.habit_id,
+              date: c.date,
+              completed: Boolean(c.completed),
+              note: c.note || '',
+              updated_at: c.updated_at,
+              value: c.value !== undefined ? Number(c.value) : (c.completed ? 1 : 0),
+              mood: (c.mood as any) || undefined,
+            };
+            checkinsMap[`${c.habit_id}_${c.date}`] = item;
+            return item;
+          });
+
+          const wellnessLogsMap: Record<string, WellnessLog> = {};
+          for (const w of dbWellnessLogs) {
+            wellnessLogsMap[w.date] = w;
+          }
+
+          const parsedTriggerRules: TriggerRule[] = dbTriggerRules.map((t) => ({
+            id: t.id,
+            habit_id: t.habit_id,
+            type: t.type,
+            config: typeof t.config === 'string' ? JSON.parse(t.config || '{}') : t.config,
+            enabled: Boolean(t.enabled),
+            created_at: t.created_at,
+          }));
+
+          set({
+            habits: parsedHabits,
+            checkins: checkinsMap,
+            allCheckinsList: checkinsList,
+            habitDependencies: dbDependencies,
+            wellnessLogs: wellnessLogsMap,
+            triggerRules: parsedTriggerRules,
+            isLoading: false,
+          });
+        } else {
+          // LocalStorage multi-user fallback
+          const userHabitsKey = `zion_habits_${userId}`;
+          const userCheckinsKey = `zion_checkins_${userId}`;
+          let parsedHabits: Habit[] = [];
+          const rawHabits = localStorage.getItem(userHabitsKey);
+          if (rawHabits) {
+            try { parsedHabits = JSON.parse(rawHabits); } catch {}
+          } else {
+            const legacy = localStorage.getItem(LOCAL_STORAGE_KEY_HABITS);
+            if (legacy) {
+              try { parsedHabits = JSON.parse(legacy); } catch {}
+            }
+          }
+
+          let checkinsMap: Record<string, Checkin> = {};
+          const rawCheckins = localStorage.getItem(userCheckinsKey);
+          if (rawCheckins) {
+            try { checkinsMap = JSON.parse(rawCheckins); } catch {}
+          } else {
+            const legacyCheckins = localStorage.getItem(LOCAL_STORAGE_KEY_CHECKINS);
+            if (legacyCheckins) {
+              try { checkinsMap = JSON.parse(legacyCheckins); } catch {}
+            }
+          }
+
+          set({
+            habits: parsedHabits,
+            checkins: checkinsMap,
+            allCheckinsList: Object.values(checkinsMap),
+            isLoading: false,
+          });
+        }
+      } catch (err) {
+        console.error('Error loading user-scoped data:', err);
+        set({ isLoading: false });
       }
     },
 
@@ -1377,23 +1771,20 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
     },
 
     resetAllData: async () => {
-      if (window.api) {
+      if (window.api?.data?.reset) {
         await window.api.data.reset();
       }
-      localStorage.removeItem(LOCAL_STORAGE_KEY_HABITS);
-      localStorage.removeItem(LOCAL_STORAGE_KEY_CHECKINS);
-      localStorage.removeItem(LOCAL_STORAGE_KEY_SETTINGS);
-      localStorage.removeItem(LOCAL_STORAGE_KEY_DEPENDENCIES);
-      localStorage.removeItem(LOCAL_STORAGE_KEY_WELLNESS_LOGS);
-      localStorage.removeItem(LOCAL_STORAGE_KEY_SKIP_REASONS);
-      localStorage.removeItem(LOCAL_STORAGE_KEY_SKILL_PROGRESS);
-      localStorage.removeItem(LOCAL_STORAGE_KEY_TRIGGER_RULES);
-      localStorage.removeItem(LOCAL_STORAGE_KEY_ROUTINES);
-      localStorage.removeItem(LOCAL_STORAGE_KEY_SHIELDS);
-      localStorage.removeItem(LOCAL_STORAGE_KEY_FOCUS_SESSIONS);
-      localStorage.removeItem(LOCAL_STORAGE_KEY_ACTIVE_TIMER);
-      localStorage.removeItem(LOCAL_STORAGE_KEY_HABIT_FOCUS_GOALS);
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
       soundscapeEngine.stop();
+
+      try {
+        if (typeof window !== 'undefined' && window.api?.desktopTimer?.sendAction) {
+          void window.api.desktopTimer.sendAction('discard');
+        }
+      } catch {}
 
       set({
         habits: [],
@@ -1408,10 +1799,47 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         routines: DEFAULT_ROUTINES,
         streakShields: DEFAULT_SHIELDS,
         focusSessions: [],
-    activeHabitTimer: null,
+        activeHabitTimer: null,
         activeRoutineRunner: null,
         routineManagerOpen: false,
+        timetableSchedules: [],
+        timetableExecutions: {},
+        activeScheduleId: null,
+        habitStacks: [],
+        habitProofs: [],
+        p2pDuels: [],
+        currentUser: null,
+        usersList: [],
+        authScreen: 'register',
+        prefilledAuthIdentifier: '',
+        authMessage: null,
+        activeTab: 'dashboard',
       });
+    },
+
+    uninstallApp: async () => {
+      soundscapeEngine.stop();
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch {}
+
+      if (window.api?.data?.uninstall) {
+        await window.api.data.uninstall();
+      } else {
+        // Fallback for web mode
+        try {
+          if (typeof window !== 'undefined' && 'indexedDB' in window) {
+            const dbs = await window.indexedDB.databases?.();
+            if (dbs) {
+              for (const d of dbs) {
+                if (d.name) window.indexedDB.deleteDatabase(d.name);
+              }
+            }
+          }
+        } catch {}
+        window.location.reload();
+      }
     },
 
     // Habit Dependencies actions
@@ -1715,7 +2143,7 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         id,
         title: routineData.title || 'Untitled Routine',
         description: routineData.description || '',
-        emoji: routineData.emoji || '⚡',
+        emoji: routineData.emoji || 'zap',
         color: routineData.color || '#3b82f6',
         time_of_day: routineData.time_of_day || 'morning',
         steps: routineData.steps || [],
@@ -1871,6 +2299,7 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
         habitId: habit.id,
         habitName: habit.name,
         habitColor: habit.color || '#6366f1',
+        habitEmoji: habit.emoji || 'target',
         targetSeconds: Math.max(60, Math.round(targetMins * 60)),
         accumulatedSeconds: 0,
         startedAtMs: Date.now(),
@@ -1909,6 +2338,20 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
       persistActiveTimer(resumed);
       set({ activeHabitTimer: resumed });
       if (resumed.soundscape !== 'none') soundscapeEngine.play(resumed.soundscape);
+    },
+
+    extendHabitTimer: (extraMinutes: number) => {
+      const t = get().activeHabitTimer;
+      if (!t) return;
+      const extraSeconds = extraMinutes * 60;
+      const updated: ActiveHabitTimer = {
+        ...t,
+        targetSeconds: t.targetSeconds + extraSeconds,
+        notifiedTargetReached: false,
+      };
+      persistActiveTimer(updated);
+      set({ activeHabitTimer: updated });
+      sound.playClick();
     },
 
     stopAndLogHabitTimer: async (autoCheckin = true) => {
@@ -1959,6 +2402,451 @@ export const useHabitStore = create<HabitStoreState>((set, get) => {
       const next: ActiveHabitTimer = { ...t, notifiedTargetReached: true };
       persistActiveTimer(next);
       set({ activeHabitTimer: next });
+    },
+
+    // ─────────────────────────────────────────────
+    // Feature 7: Studio Timetable & Daily Schedule
+    // ─────────────────────────────────────────────
+    loadTimetableSchedules: async () => {
+      const todayStr = formatLocalDate(get().currentDate);
+      let schedules: TimetableSchedule[] = [];
+      const executionsMap: Record<string, boolean> = {};
+
+      if (typeof window !== 'undefined' && window.api?.timetable) {
+        try {
+          const dbSchedules = await window.api.timetable.getSchedules();
+          if (Array.isArray(dbSchedules) && dbSchedules.length > 0) {
+            schedules = dbSchedules.map((s: any) => ({
+              id: s.id,
+              title: s.title,
+              description: s.description,
+              daysOfWeek: typeof s.days_of_week === 'string' ? JSON.parse(s.days_of_week) : s.days_of_week,
+              isActive: Boolean(s.is_active),
+              createdAt: s.created_at,
+              updatedAt: s.updated_at,
+              blocks: (s.blocks || []).map((b: any) => ({
+                id: b.id,
+                scheduleId: b.schedule_id,
+                title: b.title,
+                startTime: b.start_time,
+                endTime: b.end_time,
+                category: b.category as TimetableCategory,
+                color: b.color,
+                icon: b.emoji || 'clock',
+                emoji: b.emoji,
+                description: b.description,
+                soundAlert: Boolean(b.sound_enabled),
+                linkedHabitId: b.habit_id || undefined,
+                sortOrder: b.sort_order,
+              })),
+            }));
+          }
+
+          const dbExecutions = await window.api.timetable.getExecutions(todayStr);
+          if (Array.isArray(dbExecutions)) {
+            for (const e of dbExecutions) {
+              if (e.completed) executionsMap[`${e.date}_${e.block_id}`] = true;
+            }
+          }
+        } catch (err) {
+          console.error('Failed to load timetables from DB:', err);
+        }
+      } else {
+        const raw = localStorage.getItem(LOCAL_STORAGE_KEY_TIMETABLE_SCHEDULES);
+        if (raw) {
+          try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed) && parsed.length > 0) schedules = parsed;
+          } catch {}
+        }
+        const rawExec = localStorage.getItem(LOCAL_STORAGE_KEY_TIMETABLE_EXECUTIONS);
+        if (rawExec) {
+          try {
+            const parsed = JSON.parse(rawExec);
+            if (parsed && typeof parsed === 'object') Object.assign(executionsMap, parsed);
+          } catch {}
+        }
+      }
+
+      // No hardcoding or auto-population: purely user-driven & real-time
+      const activeId = get().activeScheduleId || (schedules.length > 0 ? schedules[0].id : null);
+      set({
+        timetableSchedules: schedules,
+        timetableExecutions: executionsMap,
+        activeScheduleId: activeId,
+      });
+    },
+
+    clearAllTimetableSchedules: async () => {
+      const schedules = get().timetableSchedules;
+      if (typeof window !== 'undefined' && window.api?.timetable) {
+        for (const s of schedules) {
+          try {
+            await window.api.timetable.deleteSchedule(s.id);
+          } catch (err) {
+            console.error('Error deleting schedule:', err);
+          }
+        }
+      }
+      localStorage.removeItem(LOCAL_STORAGE_KEY_TIMETABLE_SCHEDULES);
+      localStorage.removeItem(LOCAL_STORAGE_KEY_TIMETABLE_EXECUTIONS);
+      set({
+        timetableSchedules: [],
+        timetableExecutions: {},
+        activeScheduleId: null,
+      });
+    },
+
+    saveTimetableSchedule: async (schedule) => {
+      const current = get().timetableSchedules;
+      const exists = current.some((s) => s.id === schedule.id);
+      const next = exists ? current.map((s) => (s.id === schedule.id ? schedule : s)) : [...current, schedule];
+
+      set({ timetableSchedules: next, activeScheduleId: schedule.id });
+
+      if (typeof window !== 'undefined' && window.api?.timetable) {
+        await window.api.timetable.saveSchedule({
+          id: schedule.id,
+          title: schedule.title,
+          description: schedule.description,
+          days_of_week: JSON.stringify(schedule.daysOfWeek),
+          is_active: schedule.isActive ? 1 : 0,
+          blocks: schedule.blocks.map((b) => ({
+            id: b.id,
+            schedule_id: schedule.id,
+            title: b.title,
+            start_time: b.startTime,
+            end_time: b.endTime,
+            category: b.category,
+            description: b.description || '',
+            color: b.color,
+            emoji: b.icon || b.emoji || 'clock',
+            sound_enabled: b.soundAlert ? 1 : 0,
+            habit_id: b.linkedHabitId || null,
+            sort_order: b.sortOrder,
+          })),
+        });
+      } else {
+        localStorage.setItem(LOCAL_STORAGE_KEY_TIMETABLE_SCHEDULES, JSON.stringify(next));
+      }
+    },
+
+    deleteTimetableSchedule: async (scheduleId) => {
+      const current = get().timetableSchedules;
+      const next = current.filter((s) => s.id !== scheduleId);
+      const nextActive = next.length > 0 ? next[0].id : null;
+      set({ timetableSchedules: next, activeScheduleId: nextActive });
+
+      if (typeof window !== 'undefined' && window.api?.timetable) {
+        await window.api.timetable.deleteSchedule(scheduleId);
+      } else {
+        localStorage.setItem(LOCAL_STORAGE_KEY_TIMETABLE_SCHEDULES, JSON.stringify(next));
+      }
+    },
+
+    saveTimetableBlock: async (scheduleId, block) => {
+      const schedules = get().timetableSchedules;
+      const targetSchedule = schedules.find((s) => s.id === scheduleId);
+      if (!targetSchedule) return;
+
+      const blockExists = targetSchedule.blocks.some((b) => b.id === block.id);
+      const nextBlocks = blockExists
+        ? targetSchedule.blocks.map((b) => (b.id === block.id ? block : b))
+        : [...targetSchedule.blocks, block];
+
+      nextBlocks.sort((a, b) => a.startTime.localeCompare(b.startTime));
+      const updatedSchedule = { ...targetSchedule, blocks: nextBlocks, updatedAt: new Date().toISOString() };
+      await get().saveTimetableSchedule(updatedSchedule);
+    },
+
+    deleteTimetableBlock: async (scheduleId, blockId) => {
+      const schedules = get().timetableSchedules;
+      const targetSchedule = schedules.find((s) => s.id === scheduleId);
+      if (!targetSchedule) return;
+
+      const nextBlocks = targetSchedule.blocks.filter((b) => b.id !== blockId);
+      const updatedSchedule = { ...targetSchedule, blocks: nextBlocks, updatedAt: new Date().toISOString() };
+      await get().saveTimetableSchedule(updatedSchedule);
+    },
+
+    toggleTimetableExecution: async (date, blockId) => {
+      const key = `${date}_${blockId}`;
+      const current = Boolean(get().timetableExecutions[key]);
+      const nextState = !current;
+      const nextMap = { ...get().timetableExecutions, [key]: nextState };
+
+      set({ timetableExecutions: nextMap });
+      if (nextState) {
+        sound.playCheckin();
+
+        // Award RPG XP on routine block completion
+        const schedules = get().timetableSchedules;
+        for (const s of schedules) {
+          const b = s.blocks.find((blk) => blk.id === blockId);
+          if (b) {
+            const duration = calculateBlockDurationMinutes(b.startTime, b.endTime);
+            const xp = Math.max(25, Math.round(duration * 1.5));
+            get().awardXp(xp, mapCategoryToBranch(b.category), b.title);
+            break;
+          }
+        }
+      } else {
+        sound.playClick();
+      }
+
+      if (typeof window !== 'undefined' && window.api?.timetable) {
+        await window.api.timetable.toggleExecution(date, blockId, nextState);
+      } else {
+        localStorage.setItem(LOCAL_STORAGE_KEY_TIMETABLE_EXECUTIONS, JSON.stringify(nextMap));
+      }
+    },
+
+    setActiveScheduleId: (id) => set({ activeScheduleId: id }),
+    setTimetableImportModalOpen: (open) => set({ timetableImportModalOpen: open }),
+    setTimetableBlockModalOpen: (open, block = null, scheduleId = null) =>
+      set({
+        timetableBlockModalOpen: open,
+        selectedTimetableBlock: block || null,
+        selectedScheduleIdForBlock: scheduleId || get().activeScheduleId,
+      }),
+
+    importTimetableMarkdown: async (content) => {
+      const result = parseTimetableMarkdown(content);
+      if (result.schedules.length === 0) return 0;
+
+      for (const s of result.schedules) {
+        await get().saveTimetableSchedule(s);
+      }
+      set({ activeScheduleId: result.schedules[0].id });
+      sound.playCelebration();
+      return result.schedules.length;
+    },
+
+    startTimetableBlockTimer: (block) => {
+      const habits = get().habits;
+      let matchedHabit = block.linkedHabitId ? habits.find((h) => h.id === block.linkedHabitId) : undefined;
+      if (!matchedHabit) {
+        const text = block.title.toLowerCase();
+        matchedHabit = habits.find((h) => {
+          const hn = h.name.toLowerCase();
+          return text.includes(hn) || hn.includes(block.category) || (block.category === 'cs' && hn.includes('program'));
+        });
+      }
+
+      const durationMinutes = calculateBlockDurationMinutes(block.startTime, block.endTime);
+
+      if (matchedHabit) {
+        get().startHabitTimer(matchedHabit, durationMinutes, 'countdown');
+      } else {
+        const habitCatMap: Record<TimetableCategory, 'health' | 'mind' | 'work' | 'routine'> = {
+          cs: 'work',
+          english: 'mind',
+          health: 'health',
+          sleep: 'routine',
+          meal: 'routine',
+          break: 'routine',
+          review: 'work',
+          general: 'routine',
+        };
+
+        const synthetic: Habit = {
+          id: `tt_${block.id}`,
+          name: block.title,
+          emoji: block.emoji || 'clock',
+          color: block.color || '#6366f1',
+          monthly_goal: 30,
+          schedule_days: [0, 1, 2, 3, 4, 5, 6],
+          sort_order: 0,
+          archived: false,
+          created_at: new Date().toISOString(),
+          type: 'boolean',
+          target_value: 1,
+          unit: '',
+          category: habitCatMap[block.category] || 'routine',
+        };
+        get().startHabitTimer(synthetic, durationMinutes, 'countdown');
+      }
+    },
+
+    // Feature 8 & 9 & 10 Actions
+    setRpgSkillTreeModalOpen: (open) => set({ rpgSkillTreeModalOpen: open }),
+
+    awardXp: (amount, branch, sourceTitle) => {
+      const cur = get().rpgProfile;
+      const { updatedProfile, didLevelUpOverall } = awardXpToProfile(
+        cur,
+        amount,
+        branch,
+        sourceTitle
+      );
+      set({ rpgProfile: updatedProfile });
+      try {
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('zion_rpg_profile', JSON.stringify(updatedProfile));
+        }
+      } catch {}
+
+      if (didLevelUpOverall) {
+        sound.playCelebration();
+      }
+    },
+
+    setTimetableTimelineViewMode: (mode) => set({ timetableTimelineViewMode: mode }),
+    setZenStudioModalOpen: (open) => set({ zenStudioModalOpen: open }),
+
+    cascadeShiftActiveSchedule: async (startingBlockId, shiftMinutes) => {
+      const activeSched = get().timetableSchedules.find((s) => s.id === get().activeScheduleId);
+      if (!activeSched) return;
+      const shiftedBlocks = cascadeShiftBlocks(activeSched.blocks, startingBlockId, shiftMinutes);
+      const updated = { ...activeSched, blocks: shiftedBlocks, updatedAt: new Date().toISOString() };
+      await get().saveTimetableSchedule(updated);
+      sound.playClick();
+    },
+
+    snapBlockToCurrentTime: async (blockId) => {
+      const activeSched = get().timetableSchedules.find((s) => s.id === get().activeScheduleId);
+      if (!activeSched) return;
+      const now = new Date();
+      const hh = now.getHours().toString().padStart(2, '0');
+      const mm = now.getMinutes().toString().padStart(2, '0');
+      const snappedBlocks = snapBlockToNow(activeSched.blocks, blockId, `${hh}:${mm}`);
+      const updated = { ...activeSched, blocks: snappedBlocks, updatedAt: new Date().toISOString() };
+      await get().saveTimetableSchedule(updated);
+      sound.playClick();
+    },
+
+    // Feature 12: Habit Stacking & Synergy Graph Actions
+    setSynergyGraphModalOpen: (open) => set({ synergyGraphModalOpen: open }),
+    loadHabitStacks: async () => {
+      if (typeof window !== 'undefined' && window.api?.stacks?.get) {
+        const stacks = await window.api.stacks.get();
+        set({ habitStacks: stacks || [] });
+      } else {
+        try {
+          const raw = localStorage.getItem('zion_habit_stacks');
+          set({ habitStacks: raw ? JSON.parse(raw) : [] });
+        } catch {}
+      }
+    },
+    saveHabitStack: async (stackData) => {
+      const id = stackData.id || `stack-${Date.now()}`;
+      const payload: HabitStack = {
+        id,
+        parent_habit_id: stackData.parent_habit_id,
+        child_habit_id: stackData.child_habit_id,
+        cue_trigger: stackData.cue_trigger || 'immediate',
+        synergy_score: stackData.synergy_score || 1.0,
+        created_at: new Date().toISOString(),
+      };
+      if (typeof window !== 'undefined' && window.api?.stacks?.save) {
+        const updated = await window.api.stacks.save(payload);
+        set({ habitStacks: updated || [] });
+      } else {
+        const cur = get().habitStacks.filter((s) => s.id !== id);
+        const updated = [...cur, payload];
+        set({ habitStacks: updated });
+        localStorage.setItem('zion_habit_stacks', JSON.stringify(updated));
+      }
+      sound.playClick();
+    },
+    deleteHabitStack: async (id) => {
+      if (typeof window !== 'undefined' && window.api?.stacks?.delete) {
+        const updated = await window.api.stacks.delete(id);
+        set({ habitStacks: updated || [] });
+      } else {
+        const updated = get().habitStacks.filter((s) => s.id !== id);
+        set({ habitStacks: updated });
+        localStorage.setItem('zion_habit_stacks', JSON.stringify(updated));
+      }
+      sound.playClick();
+    },
+
+    // Feature 13: Identity Proof Journaling & Time Capsule Actions
+    setTimeCapsuleModalOpen: (open, habitId = null) =>
+      set({ timeCapsuleModalOpen: open, timeCapsuleHabitId: habitId || null }),
+    loadHabitProofs: async (habitId) => {
+      if (typeof window !== 'undefined' && window.api?.proofs?.get) {
+        const proofs = await window.api.proofs.get(habitId);
+        set({ habitProofs: proofs || [] });
+      } else {
+        try {
+          const raw = localStorage.getItem('zion_habit_proofs');
+          const all: HabitProof[] = raw ? JSON.parse(raw) : [];
+          set({ habitProofs: habitId ? all.filter((p) => p.habit_id === habitId) : all });
+        } catch {}
+      }
+    },
+    addHabitProof: async (proofData) => {
+      const id = `proof-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`;
+      const payload: HabitProof = {
+        id,
+        habit_id: proofData.habit_id,
+        date: proofData.date,
+        image_data: proofData.image_data,
+        audio_data: proofData.audio_data || '',
+        caption: proofData.caption || '',
+        created_at: new Date().toISOString(),
+      };
+      if (typeof window !== 'undefined' && window.api?.proofs?.add) {
+        await window.api.proofs.add(payload);
+        const allProofs = await window.api.proofs.get();
+        set({ habitProofs: allProofs || [] });
+      } else {
+        const cur = get().habitProofs;
+        const updated = [payload, ...cur];
+        set({ habitProofs: updated });
+        localStorage.setItem('zion_habit_proofs', JSON.stringify(updated));
+      }
+      sound.playCelebration();
+    },
+    deleteHabitProof: async (id, habitId) => {
+      if (typeof window !== 'undefined' && window.api?.proofs?.delete) {
+        await window.api.proofs.delete(id, habitId);
+        const allProofs = await window.api.proofs.get();
+        set({ habitProofs: allProofs || [] });
+      } else {
+        const updated = get().habitProofs.filter((p) => p.id !== id);
+        set({ habitProofs: updated });
+        localStorage.setItem('zion_habit_proofs', JSON.stringify(updated));
+      }
+      sound.playClick();
+    },
+
+    // Feature 14: P2P Accountability Duels Actions
+    setP2PDuelModalOpen: (open) => set({ p2pDuelModalOpen: open }),
+    loadP2PDuels: async () => {
+      if (typeof window !== 'undefined' && window.api?.duels?.get) {
+        const duels = await window.api.duels.get();
+        set({ p2pDuels: duels || [] });
+      } else {
+        try {
+          const raw = localStorage.getItem('zion_p2p_duels');
+          set({ p2pDuels: raw ? JSON.parse(raw) : [] });
+        } catch {}
+      }
+    },
+    saveP2PDuel: async (duel) => {
+      if (typeof window !== 'undefined' && window.api?.duels?.save) {
+        const updated = await window.api.duels.save(duel);
+        set({ p2pDuels: updated || [] });
+      } else {
+        const cur = get().p2pDuels.filter((d) => d.id !== duel.id);
+        const updated = [duel, ...cur];
+        set({ p2pDuels: updated });
+        localStorage.setItem('zion_p2p_duels', JSON.stringify(updated));
+      }
+      sound.playClick();
+    },
+    deleteP2PDuel: async (id) => {
+      if (typeof window !== 'undefined' && window.api?.duels?.delete) {
+        const updated = await window.api.duels.delete(id);
+        set({ p2pDuels: updated || [] });
+      } else {
+        const updated = get().p2pDuels.filter((d) => d.id !== id);
+        set({ p2pDuels: updated });
+        localStorage.setItem('zion_p2p_duels', JSON.stringify(updated));
+      }
+      sound.playClick();
     },
   };
 });

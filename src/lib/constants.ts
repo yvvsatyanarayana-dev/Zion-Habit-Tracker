@@ -1,4 +1,5 @@
 import type { AppSettings } from './types';
+import pkg from '../../package.json';
 
 export const HABIT_PALETTE = [
   '#6366f1', // Electric Indigo (Brand Accent)
@@ -45,6 +46,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   show_emoji: false,
   streak_threshold: 50,
   allow_future_edits: false,
+  allow_past_edits: false,
   density: 'comfortable',
   reduce_motion: false,
   reminder_time: '',
@@ -54,7 +56,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   sound_enabled: true,
 };
 
-export const APP_VERSION = '1.1.1';
+export const APP_VERSION = pkg.version;
 export const GITHUB_REPO_OWNER = 'yvvsatyanarayana-dev';
 export const GITHUB_REPO_NAME = 'Zion-Habit-Tracker';
 export const GITHUB_RELEASES_URL = `https://github.com/${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}/releases`;

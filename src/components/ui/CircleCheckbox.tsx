@@ -11,9 +11,10 @@ interface CircleCheckboxProps {
   id?: string;
   isToday?: boolean;
   shape?: 'circle' | 'rounded';
+  title?: string;
 }
 
-export const CircleCheckbox: React.FC<CircleCheckboxProps> = ({
+export const CircleCheckbox: React.FC<CircleCheckboxProps> = React.memo(({
   checked,
   color,
   size = 22,
@@ -23,6 +24,7 @@ export const CircleCheckbox: React.FC<CircleCheckboxProps> = ({
   id,
   isToday = false,
   shape = 'circle',
+  title,
 }) => {
   const iconSize = size >= 28 ? 16 : 13;
   const isSquircle = shape === 'rounded';
@@ -63,11 +65,14 @@ export const CircleCheckbox: React.FC<CircleCheckboxProps> = ({
               }),
         } as React.CSSProperties & Record<string, string>
       }
+      title={title}
       className={`circle-checkbox group/cb relative inline-flex items-center justify-center border-[1.5px] border-solid transition-all duration-150 ease-out focus:outline-none focus:ring-2 focus:ring-[var(--accent-primary)]/40 select-none touch-manipulation after:content-[''] after:absolute after:-inset-2.5 after:rounded-full ${
         isSquircle ? 'rounded-[7px]' : 'rounded-full'
       } ${isToday ? 'is-today' : ''} ${checked ? 'is-checked' : ''} ${
         disabled
-          ? 'opacity-25 cursor-not-allowed'
+          ? checked
+            ? 'opacity-80 cursor-not-allowed'
+            : 'opacity-25 cursor-not-allowed'
           : 'cursor-pointer hover:scale-108 active:scale-92'
       }`}
     >
@@ -88,5 +93,6 @@ export const CircleCheckbox: React.FC<CircleCheckboxProps> = ({
       )}
     </button>
   );
-};
+});
+CircleCheckbox.displayName = 'CircleCheckbox';
 

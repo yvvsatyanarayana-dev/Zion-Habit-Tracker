@@ -172,7 +172,7 @@ export const ProfilePage: React.FC = () => {
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-xl sm:text-2xl font-bold tracking-tight text-[var(--text-primary)]">
-                  {currentUser?.name || 'Studio User'}
+                  {currentUser?.name || currentUser?.username || 'Zion User'}
                 </h2>
                 <span className="px-2 py-0.5 rounded-[4px] text-[10.5px] font-bold bg-amber-500/15 border border-amber-500/30 text-amber-400 flex items-center gap-1">
                   <Trophy size={11} />
@@ -185,7 +185,7 @@ export const ProfilePage: React.FC = () => {
                   @{currentUser?.username || 'user'}
                 </span>
                 <span>•</span>
-                <span>{currentUser?.email || 'user@example.com'}</span>
+                <span>{currentUser?.email ? currentUser.email : 'Local Profile'}</span>
                 <span>•</span>
                 <span className="flex items-center gap-1 text-[var(--text-dim)]">
                   <Calendar size={12} />
@@ -195,7 +195,7 @@ export const ProfilePage: React.FC = () => {
 
               {/* Personal motto */}
               <p className="text-xs text-[var(--text-secondary)] mt-2.5 max-w-xl leading-relaxed italic">
-                &ldquo;{currentUser?.bio || 'Building consistent daily habits with Studio.'}&rdquo;
+                &ldquo;{currentUser?.bio || 'Building consistent daily habits with Zion.'}&rdquo;
               </p>
             </div>
           </div>

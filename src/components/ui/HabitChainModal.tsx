@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus, Trash2, GitBranch, GitBranchPlus, ArrowUpDown, AlertCircle, HelpCircle } from 'lucide-react';
+import { X, Trash2, GitBranch, GitBranchPlus, ArrowUpDown, AlertCircle, HelpCircle } from 'lucide-react';
+import { HabitIconView } from '../../lib/habitIcons';
 import { useHabitStore } from '../../store/useHabitStore';
-import type { Habit, HabitDependency } from '../../lib/types';
-import { validateNewDependency, getChainVisualization, ChainNode } from '../../lib/habitChain';
+import { validateNewDependency, getChainVisualization } from '../../lib/habitChain';
 import { clsx } from 'clsx';
 
 interface HabitChainModalProps {
@@ -39,16 +40,6 @@ export const HabitChainModal: React.FC<HabitChainModalProps> = ({ isOpen, onClos
     !antiChains.some(a => a.depends_on_id === h.id)
   );
 
-  const handleAddDependency = async () => {
-    if (!selectedHabitId) {
-      setError('Please select a habit first');
-      return;
-    }
-
-    // This would need a target habit selector - simplified for now
-    setError('Select a target habit from the list below');
-  };
-
   const handleRemoveDependency = async (habitId: string, dependsOnId: string) => {
     await removeDependency(habitId, dependsOnId);
     setError('');
@@ -64,47 +55,66 @@ export const HabitChainModal: React.FC<HabitChainModalProps> = ({ isOpen, onClos
 
   if (!isOpen) return null;
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-[16px]"
         onClick={onClose}
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0, scale: 0.96, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="bg-background rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col"
+          exit={{ opacity: 0, scale: 0.96, y: 16 }}
+          transition={{ duration: 0.2 }}
+          className="w-full max-w-4xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[90vh] bg-[#131316]"
+          style={{
+            backgroundColor: '#131316',
+            borderColor: 'var(--border-subtle, rgba(255,255,255,0.08))',
+            boxShadow: '0 25px 60px -15px rgba(0,0,0,0.95), 0 0 0 1px rgba(255,255,255,0.08)',
+            color: 'var(--text-primary, #f4f4f6)',
+          }}
           onClick={e => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-border">
+          <div
+            className="flex items-center justify-between p-4 sm:p-5 border-b flex-shrink-0 bg-[#0e0e11]"
+            style={{
+              borderColor: 'var(--border-subtle, rgba(255,255,255,0.08))',
+              backgroundColor: '#0e0e11',
+            }}
+          >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-500/20 rounded-xl">
-                <GitBranch className="w-5 h-5 text-purple-400" />
+              <div className="p-2.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
+                <GitBranch className="w-5 h-5" />
               </div>
               <div>
-                <h2 className="text-lg font-semibold text-foreground">Habit Chains</h2>
-                <p className="text-sm text-muted-foreground">Manage prerequisites & anti-chains</p>
+                <h2 className="text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary, #f4f4f6)' }}>
+                  Habit Chains & Dependencies
+                </h2>
+                <p className="text-xs" style={{ color: 'var(--text-secondary, #9898a4)' }}>
+                  Manage prerequisites, sequential stacking, and anti-chains
+                </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => setShowHelp(!showHelp)}
-                className="p-2 hover:bg-accent rounded-lg transition-colors"
+                className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+                title="Toggle Chain Help"
                 aria-label="Toggle help"
               >
-                <HelpCircle className="w-5 h-5 text-muted-foreground" />
+                <HelpCircle className="w-5 h-5" />
               </button>
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-accent rounded-lg transition-colors"
+                className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/10 transition-colors"
+                title="Close"
                 aria-label="Close"
               >
-                <X className="w-5 h-5 text-muted-foreground" />
+                <X className="w-5 h-5" />
               </button>
             </div>
           </div>
@@ -116,44 +126,69 @@ export const HabitChainModal: React.FC<HabitChainModalProps> = ({ isOpen, onClos
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="bg-purple-500/10 border-b border-purple-500/20 p-4 text-sm"
+                className="border-b p-4 text-xs flex-shrink-0"
+                style={{
+                  backgroundColor: 'rgba(168, 85, 247, 0.08)',
+                  borderColor: 'rgba(168, 85, 247, 0.2)',
+                }}
               >
                 <div className="grid gap-2 sm:grid-cols-2">
                   <div className="flex items-center gap-2 text-purple-300">
-                    <GitBranch className="w-4 h-4" />
+                    <GitBranch className="w-4 h-4 flex-shrink-0" />
                     <span><strong>Prerequisite:</strong> Must complete first before this habit</span>
                   </div>
                   <div className="flex items-center gap-2 text-orange-300">
-                    <AlertCircle className="w-4 h-4" />
-                    <span><strong>Anti-chain:</strong> Cannot complete both on same day</span>
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    <span><strong>Anti-chain:</strong> Cannot complete both on the same day</span>
                   </div>
-                  <div className="flex items-center gap-2 text-green-300">
-                    <ArrowUpDown className="w-4 h-4" />
+                  <div className="flex items-center gap-2 text-emerald-300">
+                    <ArrowUpDown className="w-4 h-4 flex-shrink-0" />
                     <span><strong>Smart Reschedule:</strong> Drag habit → dependents move automatically</span>
                   </div>
                   <div className="flex items-center gap-2 text-blue-300">
-                    <GitBranchPlus className="w-4 h-4" />
-                    <span><strong>Visual Chains:</strong> See all connections at a glance</span>
+                    <GitBranchPlus className="w-4 h-4 flex-shrink-0" />
+                    <span><strong>Visual Chains:</strong> See all connected dependencies at a glance</span>
                   </div>
                 </div>
               </motion.div>
             )}
           </AnimatePresence>
 
-          <div className="flex-1 overflow-hidden flex">
+          <div className="flex-1 overflow-hidden flex flex-col md:flex-row min-h-0">
             {/* Left Panel - Habit List */}
-            <div className="w-64 border-r border-border flex flex-col">
-              <div className="p-3 border-b border-border">
-                <label className="block text-xs font-medium text-muted-foreground mb-2">Select Habit</label>
+            <div
+              className="w-full md:w-72 border-b md:border-b-0 md:border-r flex flex-col flex-shrink-0"
+              style={{
+                borderColor: 'var(--border-subtle, rgba(255,255,255,0.08))',
+                backgroundColor: 'var(--bg-surface, #0e0e11)',
+              }}
+            >
+              <div
+                className="p-3 sm:p-4 border-b flex-shrink-0"
+                style={{ borderColor: 'var(--border-subtle, rgba(255,255,255,0.08))' }}
+              >
+                <label
+                  className="block text-xs font-bold uppercase tracking-wider mb-2"
+                  style={{ color: 'var(--text-muted, #5e5e6c)' }}
+                >
+                  Select Habit
+                </label>
                 <select
                   value={selectedHabitId}
                   onChange={e => { setSelectedHabitId(e.target.value); setError(''); }}
-                  className="w-full bg-input border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full rounded-xl px-3 py-2 text-sm border focus:outline-none transition-colors"
+                  style={{
+                    backgroundColor: 'var(--bg-surface-subtle, #1c1c20)',
+                    borderColor: 'var(--border-medium, rgba(255,255,255,0.11))',
+                    color: 'var(--text-primary, #f4f4f6)',
+                  }}
                 >
-                  <option value="">Choose a habit...</option>
+                  <option value="" style={{ backgroundColor: '#131316', color: '#f4f4f6' }}>
+                    Choose a habit...
+                  </option>
                   {activeHabits.map(h => (
-                    <option key={h.id} value={h.id}>
-                      {h.emoji} {h.name}
+                    <option key={h.id} value={h.id} style={{ backgroundColor: '#131316', color: '#f4f4f6' }}>
+                      {h.name}
                     </option>
                   ))}
                 </select>
@@ -161,11 +196,19 @@ export const HabitChainModal: React.FC<HabitChainModalProps> = ({ isOpen, onClos
 
               {/* Chain Overview */}
               <div className="flex-1 overflow-y-auto p-3 space-y-2">
+                <div
+                  className="text-[11px] font-bold uppercase tracking-wider px-1 mb-1"
+                  style={{ color: 'var(--text-muted, #5e5e6c)' }}
+                >
+                  Connected Habits ({chainNodes.filter(n => n.prerequisites.length > 0 || n.dependents.length > 0 || n.antiChains.length > 0).length})
+                </div>
+
                 {chainNodes.filter(n =>
                   n.prerequisites.length > 0 || n.dependents.length > 0 || n.antiChains.length > 0
                 ).map(node => {
                   const habit = activeHabits.find(h => h.id === node.habitId);
                   if (!habit) return null;
+                  const isSelected = selectedHabitId === node.habitId;
 
                   return (
                     <motion.div
@@ -173,70 +216,94 @@ export const HabitChainModal: React.FC<HabitChainModalProps> = ({ isOpen, onClos
                       initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       className={clsx(
-                        'p-2 rounded-lg text-xs transition-colors cursor-pointer',
-                        selectedHabitId === node.habitId
-                          ? 'bg-primary/20 border border-primary/30'
-                          : 'hover:bg-accent'
+                        'p-2.5 rounded-xl text-xs transition-all cursor-pointer border',
+                        isSelected ? 'shadow-md' : 'hover:bg-white/[0.04]'
                       )}
+                      style={{
+                        backgroundColor: isSelected ? 'var(--bg-surface-card, #17171a)' : 'transparent',
+                        borderColor: isSelected ? 'var(--accent-primary, #6366f1)' : 'var(--border-subtle, rgba(255,255,255,0.065))',
+                      }}
                       onClick={() => { setSelectedHabitId(node.habitId); setError(''); }}
                     >
-                      <div className="flex items-center gap-2">
-                        <span className="text-lg">{habit.emoji}</span>
-                        <span className="font-medium text-foreground truncate">{habit.name}</span>
+                      <div className="flex items-center gap-2.5">
+                        <HabitIconView iconId={habit.emoji} color={habit.color} size={16} />
+                        <span className="font-semibold truncate" style={{ color: 'var(--text-primary, #f4f4f6)' }}>
+                          {habit.name}
+                        </span>
                       </div>
-                      <div className="mt-1 flex flex-wrap gap-1">
+                      <div className="mt-2 flex flex-wrap gap-1.5">
                         {node.prerequisites.length > 0 && (
-                          <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-300 rounded text-xs">
+                          <span className="px-2 py-0.5 bg-purple-500/15 border border-purple-500/25 text-purple-300 rounded-md text-[10px] font-medium">
                             ↳ {node.prerequisites.length} prereq
                           </span>
                         )}
                         {node.dependents.length > 0 && (
-                          <span className="px-1.5 py-0.5 bg-blue-500/20 text-blue-300 rounded text-xs">
-                            {node.dependents.length} →
+                          <span className="px-2 py-0.5 bg-blue-500/15 border border-blue-500/25 text-blue-300 rounded-md text-[10px] font-medium">
+                            {node.dependents.length} dependent
                           </span>
                         )}
                         {node.antiChains.length > 0 && (
-                          <span className="px-1.5 py-0.5 bg-orange-500/20 text-orange-300 rounded text-xs">
-                            ≠ {node.antiChains.length}
+                          <span className="px-2 py-0.5 bg-orange-500/15 border border-orange-500/25 text-orange-300 rounded-md text-[10px] font-medium">
+                            ≠ {node.antiChains.length} anti
                           </span>
                         )}
                       </div>
                     </motion.div>
                   );
                 })}
+
                 {chainNodes.every(n => n.prerequisites.length === 0 && n.dependents.length === 0 && n.antiChains.length === 0) && (
-                  <div className="text-center py-8 text-muted-foreground text-sm">
-                    <GitBranch className="w-8 h-8 mx-auto mb-2 opacity-30" />
-                    <p>No chains yet</p>
-                    <p className="text-xs mt-1">Select a habit to create connections</p>
+                  <div className="text-center py-10 px-3">
+                    <div className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center bg-white/[0.03] border border-white/5">
+                      <GitBranch className="w-6 h-6 text-zinc-500" />
+                    </div>
+                    <p className="text-sm font-semibold text-zinc-300">No chains yet</p>
+                    <p className="text-xs text-zinc-500 mt-1">Select a habit above to set up dependencies</p>
                   </div>
                 )}
               </div>
             </div>
 
             {/* Right Panel - Dependency Editor */}
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div
+              className="flex-1 flex flex-col overflow-y-auto"
+              style={{ backgroundColor: 'var(--bg-surface-elevated, #131316)' }}
+            >
               {selectedHabit ? (
                 <>
                   {/* Selected Habit Header */}
-                  <div className="p-4 border-b border-border bg-muted/30">
-                    <div className="flex items-center gap-3">
-                      <span className="text-3xl">{selectedHabit.emoji}</span>
-                      <div>
-                        <h3 className="font-semibold text-foreground">{selectedHabit.name}</h3>
-                        <p className="text-sm text-muted-foreground">
-                          {prerequisites.length} prerequisite{prerequisites.length !== 1 ? 's' : ''},
-                          {dependents.length} dependent{dependents.length !== 1 ? 's' : ''},
-                          {antiChains.length} anti-chain{antiChains.length !== 1 ? 's' : ''}
+                  <div
+                    className="p-4 sm:p-5 border-b flex-shrink-0"
+                    style={{
+                      borderColor: 'var(--border-subtle, rgba(255,255,255,0.08))',
+                      backgroundColor: 'var(--bg-surface-card, #17171a)',
+                    }}
+                  >
+                    <div className="flex items-center gap-3.5">
+                      <div
+                        className="w-12 h-12 rounded-2xl flex items-center justify-center border shadow-inner flex-shrink-0"
+                        style={{
+                          backgroundColor: selectedHabit.color ? `${selectedHabit.color}15` : 'rgba(255,255,255,0.05)',
+                          borderColor: selectedHabit.color ? `${selectedHabit.color}35` : 'var(--border-subtle, rgba(255,255,255,0.08))',
+                        }}
+                      >
+                        <HabitIconView iconId={selectedHabit.emoji} color={selectedHabit.color} size={22} />
+                      </div>
+                      <div className="min-w-0">
+                        <h3 className="font-bold text-base tracking-tight truncate" style={{ color: 'var(--text-primary, #f4f4f6)' }}>
+                          {selectedHabit.name}
+                        </h3>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary, #9898a4)' }}>
+                          {prerequisites.length} prerequisite{prerequisites.length !== 1 ? 's' : ''} • {dependents.length} dependent{dependents.length !== 1 ? 's' : ''} • {antiChains.length} anti-chain{antiChains.length !== 1 ? 's' : ''}
                         </p>
                       </div>
                     </div>
                   </div>
 
                   {/* Prerequisites */}
-                  <div className="p-4 space-y-3">
+                  <div className="p-4 sm:p-5 space-y-4">
                     <div className="flex items-center justify-between">
-                      <h4 className="flex items-center gap-2 text-sm font-medium text-purple-300">
+                      <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-purple-400">
                         <GitBranch className="w-4 h-4" />
                         Prerequisites (must complete first)
                       </h4>
@@ -249,20 +316,31 @@ export const HabitChainModal: React.FC<HabitChainModalProps> = ({ isOpen, onClos
                           return (
                             <motion.div
                               key={dep.depends_on_id}
-                              initial={{ opacity: 0, x: -20 }}
+                              initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
-                              className="flex items-center justify-between p-3 bg-purple-500/10 border border-purple-500/20 rounded-lg"
+                              className="flex items-center justify-between p-3 rounded-xl border"
+                              style={{
+                                backgroundColor: 'rgba(168, 85, 247, 0.08)',
+                                borderColor: 'rgba(168, 85, 247, 0.2)',
+                              }}
                             >
-                              <div className="flex items-center gap-3">
-                                <span className="text-xl">{prereqHabit?.emoji || '❓'}</span>
-                                <div>
-                                  <p className="font-medium text-foreground">{prereqHabit?.name || 'Unknown'}</p>
-                                  <p className="text-xs text-muted-foreground">Must complete before {selectedHabit.name}</p>
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-purple-500/20 border border-purple-500/30 flex-shrink-0">
+                                  <HabitIconView iconId={prereqHabit?.emoji} color={prereqHabit?.color} size={16} />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary, #f4f4f6)' }}>
+                                    {prereqHabit?.name || 'Unknown'}
+                                  </p>
+                                  <p className="text-[11px] text-purple-300/80">
+                                    Must be finished before checking in {selectedHabit.name}
+                                  </p>
                                 </div>
                               </div>
                               <button
                                 onClick={() => handleRemoveDependency(selectedHabitId, dep.depends_on_id)}
-                                className="p-1.5 hover:bg-purple-500/20 rounded text-purple-400 transition-colors"
+                                className="p-2 hover:bg-rose-500/15 rounded-lg text-rose-400 transition-colors flex-shrink-0"
+                                title="Remove prerequisite"
                                 aria-label="Remove prerequisite"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -272,27 +350,59 @@ export const HabitChainModal: React.FC<HabitChainModalProps> = ({ isOpen, onClos
                         })}
                       </div>
                     ) : (
-                      <p className="text-sm text-muted-foreground text-center py-4">No prerequisites set</p>
+                      <div
+                        className="text-xs text-center py-4 rounded-xl border border-dashed"
+                        style={{
+                          borderColor: 'var(--border-subtle, rgba(255,255,255,0.08))',
+                          color: 'var(--text-muted, #5e5e6c)',
+                        }}
+                      >
+                        No prerequisites set for this habit
+                      </div>
                     )}
 
-                    {/* Add Prerequisite */}
-                    <div className="pt-2 border-t border-border/50">
-                      <label className="block text-xs font-medium text-muted-foreground mb-2">
-                        Add Prerequisite
-                      </label>
-                      <div className="flex gap-2">
-                        <select
-                          value={dependencyType}
-                          onChange={e => setDependencyType(e.target.value as 'prerequisite' | 'anti')}
-                          className="flex-1 bg-input border-border rounded-lg px-3 py-2 text-sm"
+                    {/* Add Dependency Controls */}
+                    <div
+                      className="pt-4 border-t space-y-3"
+                      style={{ borderColor: 'var(--border-subtle, rgba(255,255,255,0.08))' }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <label
+                          className="text-xs font-bold uppercase tracking-wider"
+                          style={{ color: 'var(--text-muted, #5e5e6c)' }}
                         >
-                          <option value="prerequisite">🔗 Prerequisite</option>
-                          <option value="anti">⚠️ Anti-chain</option>
-                        </select>
+                          Add Connection
+                        </label>
+                        <div className="flex gap-1 p-0.5 rounded-lg border" style={{ backgroundColor: 'var(--bg-surface-subtle, #1c1c20)', borderColor: 'var(--border-subtle, rgba(255,255,255,0.08))' }}>
+                          <button
+                            type="button"
+                            onClick={() => setDependencyType('prerequisite')}
+                            className={clsx(
+                              'px-3 py-1 text-xs font-semibold rounded-md transition-all',
+                              dependencyType === 'prerequisite'
+                                ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                : 'text-zinc-400 hover:text-white'
+                            )}
+                          >
+                            Prerequisite
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDependencyType('anti')}
+                            className={clsx(
+                              'px-3 py-1 text-xs font-semibold rounded-md transition-all',
+                              dependencyType === 'anti'
+                                ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30'
+                                : 'text-zinc-400 hover:text-white'
+                            )}
+                          >
+                            Anti-chain
+                          </button>
+                        </div>
                       </div>
 
                       {dependencyType === 'prerequisite' ? (
-                        <div className="mt-2 max-h-40 overflow-y-auto space-y-1">
+                        <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1">
                           {availableForPrerequisite.map(h => (
                             <button
                               key={h.id}
@@ -305,18 +415,31 @@ export const HabitChainModal: React.FC<HabitChainModalProps> = ({ isOpen, onClos
                                   setError(validation.error || 'Invalid dependency');
                                 }
                               }}
-                              className="w-full text-left p-2 hover:bg-accent rounded-lg transition-colors flex items-center gap-2"
+                              className="w-full text-left p-2.5 rounded-xl transition-colors flex items-center justify-between border hover:border-purple-500/40"
+                              style={{
+                                backgroundColor: 'var(--bg-surface-card, #17171a)',
+                                borderColor: 'var(--border-subtle, rgba(255,255,255,0.065))',
+                              }}
                             >
-                              <span className="text-lg">{h.emoji}</span>
-                              <span className="text-sm text-foreground">{h.name}</span>
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <HabitIconView iconId={h.emoji} color={h.color} size={16} />
+                                <span className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary, #f4f4f6)' }}>
+                                  {h.name}
+                                </span>
+                              </div>
+                              <span className="text-[11px] font-medium text-purple-400 flex items-center gap-1">
+                                + Add Prereq
+                              </span>
                             </button>
                           ))}
                           {availableForPrerequisite.length === 0 && (
-                            <p className="text-xs text-muted-foreground text-center py-2">All habits already connected</p>
+                            <p className="text-xs text-center py-3" style={{ color: 'var(--text-muted, #5e5e6c)' }}>
+                              All available habits are already connected
+                            </p>
                           )}
                         </div>
                       ) : (
-                        <div className="mt-2 max-h-40 overflow-y-auto space-y-1">
+                        <div className="max-h-44 overflow-y-auto space-y-1.5 pr-1">
                           {availableForAnti.map(h => (
                             <button
                               key={h.id}
@@ -329,14 +452,27 @@ export const HabitChainModal: React.FC<HabitChainModalProps> = ({ isOpen, onClos
                                   setError(validation.error || 'Invalid dependency');
                                 }
                               }}
-                              className="w-full text-left p-2 hover:bg-accent rounded-lg transition-colors flex items-center gap-2"
+                              className="w-full text-left p-2.5 rounded-xl transition-colors flex items-center justify-between border hover:border-orange-500/40"
+                              style={{
+                                backgroundColor: 'var(--bg-surface-card, #17171a)',
+                                borderColor: 'var(--border-subtle, rgba(255,255,255,0.065))',
+                              }}
                             >
-                              <span className="text-lg">{h.emoji}</span>
-                              <span className="text-sm text-foreground">{h.name}</span>
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <HabitIconView iconId={h.emoji} color={h.color} size={16} />
+                                <span className="text-xs font-semibold truncate" style={{ color: 'var(--text-primary, #f4f4f6)' }}>
+                                  {h.name}
+                                </span>
+                              </div>
+                              <span className="text-[11px] font-medium text-orange-400 flex items-center gap-1">
+                                + Add Anti-Chain
+                              </span>
                             </button>
                           ))}
                           {availableForAnti.length === 0 && (
-                            <p className="text-xs text-muted-foreground text-center py-2">All habits already connected</p>
+                            <p className="text-xs text-center py-3" style={{ color: 'var(--text-muted, #5e5e6c)' }}>
+                              All available habits are already connected
+                            </p>
                           )}
                         </div>
                       )}
@@ -345,19 +481,30 @@ export const HabitChainModal: React.FC<HabitChainModalProps> = ({ isOpen, onClos
 
                   {/* Dependents (read-only) */}
                   {dependents.length > 0 && (
-                    <div className="px-4 pb-4">
-                      <h4 className="flex items-center gap-2 text-sm font-medium text-blue-300 mb-2">
+                    <div className="px-4 sm:px-5 pb-4">
+                      <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-blue-400 mb-2">
                         <GitBranch className="w-4 h-4" />
                         Dependent Habits (auto-move when rescheduled)
                       </h4>
-                      <div className="space-y-1">
+                      <div className="space-y-1.5">
                         {dependents.map(dep => {
                           const depHabit = activeHabits.find(h => h.id === dep.habit_id);
                           return (
-                            <div key={dep.habit_id} className="flex items-center gap-2 p-2 bg-blue-500/10 border border-blue-500/20 rounded-lg text-sm">
-                              <span className="text-lg">{depHabit?.emoji || '❓'}</span>
-                              <span className="text-foreground">{depHabit?.name || 'Unknown'}</span>
-                              <span className="ml-auto text-xs text-blue-400">moves with {selectedHabit.name}</span>
+                            <div
+                              key={dep.habit_id}
+                              className="flex items-center gap-2.5 p-2.5 rounded-xl text-xs border"
+                              style={{
+                                backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                                borderColor: 'rgba(59, 130, 246, 0.2)',
+                              }}
+                            >
+                              <HabitIconView iconId={depHabit?.emoji} color={depHabit?.color} size={16} />
+                              <span className="font-semibold truncate" style={{ color: 'var(--text-primary, #f4f4f6)' }}>
+                                {depHabit?.name || 'Unknown'}
+                              </span>
+                              <span className="ml-auto text-[11px] text-blue-300">
+                                Moves in lockstep with {selectedHabit.name}
+                              </span>
                             </div>
                           );
                         })}
@@ -367,31 +514,42 @@ export const HabitChainModal: React.FC<HabitChainModalProps> = ({ isOpen, onClos
 
                   {/* Anti-chains */}
                   {antiChains.length > 0 && (
-                    <div className="px-4 pb-4">
-                      <h4 className="flex items-center gap-2 text-sm font-medium text-orange-300 mb-2">
+                    <div className="px-4 sm:px-5 pb-4">
+                      <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-orange-400 mb-2">
                         <AlertCircle className="w-4 h-4" />
-                        Anti-Chains (can't do both same day)
+                        Anti-Chains (mutually exclusive on same day)
                       </h4>
-                      <div className="space-y-1">
+                      <div className="space-y-1.5">
                         {antiChains.map(dep => {
                           const antiHabit = activeHabits.find(h => h.id === dep.depends_on_id);
                           return (
                             <motion.div
                               key={dep.depends_on_id}
-                              initial={{ opacity: 0, x: -20 }}
+                              initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
-                              className="flex items-center justify-between p-3 bg-orange-500/10 border border-orange-500/20 rounded-lg"
+                              className="flex items-center justify-between p-3 rounded-xl border"
+                              style={{
+                                backgroundColor: 'rgba(249, 115, 22, 0.08)',
+                                borderColor: 'rgba(249, 115, 22, 0.2)',
+                              }}
                             >
-                              <div className="flex items-center gap-3">
-                                <span className="text-xl">{antiHabit?.emoji || '❓'}</span>
-                                <div>
-                                  <p className="font-medium text-foreground">{antiHabit?.name || 'Unknown'}</p>
-                                  <p className="text-xs text-muted-foreground">Cannot complete both on same day</p>
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-orange-500/20 border border-orange-500/30 flex-shrink-0">
+                                  <HabitIconView iconId={antiHabit?.emoji} color={antiHabit?.color} size={16} />
+                                </div>
+                                <div className="min-w-0">
+                                  <p className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary, #f4f4f6)' }}>
+                                    {antiHabit?.name || 'Unknown'}
+                                  </p>
+                                  <p className="text-[11px] text-orange-300/80">
+                                    Cannot complete both on the same date
+                                  </p>
                                 </div>
                               </div>
                               <button
                                 onClick={() => handleRemoveDependency(selectedHabitId, dep.depends_on_id)}
-                                className="p-1.5 hover:bg-orange-500/20 rounded text-orange-400 transition-colors"
+                                className="p-2 hover:bg-rose-500/15 rounded-lg text-rose-400 transition-colors flex-shrink-0"
+                                title="Remove anti-chain"
                                 aria-label="Remove anti-chain"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -404,22 +562,42 @@ export const HabitChainModal: React.FC<HabitChainModalProps> = ({ isOpen, onClos
                   )}
 
                   {/* Actions */}
-                  <div className="px-4 pb-4 pt-2 border-t border-border/50">
+                  <div
+                    className="p-4 sm:p-5 mt-auto border-t"
+                    style={{ borderColor: 'var(--border-subtle, rgba(255,255,255,0.08))' }}
+                  >
                     <button
                       onClick={handleRemoveAll}
-                      className="w-full py-2 bg-red-500/10 border border-red-500/20 text-red-400 rounded-lg hover:bg-red-500/20 transition-colors text-sm font-medium"
+                      className="w-full py-2.5 px-4 rounded-xl text-xs font-semibold tracking-wide border transition-all flex items-center justify-center gap-2"
+                      style={{
+                        backgroundColor: 'rgba(244, 63, 94, 0.08)',
+                        borderColor: 'rgba(244, 63, 94, 0.2)',
+                        color: '#fb7185',
+                      }}
                     >
-                      <Trash2 className="w-4 h-4 inline mr-1" />
-                      Remove All Dependencies
+                      <Trash2 className="w-4 h-4" />
+                      Remove All Dependencies for {selectedHabit.name}
                     </button>
                   </div>
                 </>
               ) : (
-                <div className="flex-1 flex items-center justify-center text-muted-foreground">
-                  <div className="text-center">
-                    <GitBranch className="w-16 h-16 mx-auto mb-4 opacity-20" />
-                    <p className="text-lg">Select a habit</p>
-                    <p className="text-sm mt-1">to manage its chains</p>
+                <div className="flex-1 flex items-center justify-center p-8 text-center">
+                  <div>
+                    <div
+                      className="w-16 h-16 rounded-3xl mx-auto mb-4 flex items-center justify-center border"
+                      style={{
+                        backgroundColor: 'var(--bg-surface-subtle, #1c1c20)',
+                        borderColor: 'var(--border-subtle, rgba(255,255,255,0.08))',
+                      }}
+                    >
+                      <GitBranch className="w-8 h-8 text-purple-400" />
+                    </div>
+                    <p className="text-base font-bold" style={{ color: 'var(--text-primary, #f4f4f6)' }}>
+                      Select a habit
+                    </p>
+                    <p className="text-xs mt-1" style={{ color: 'var(--text-secondary, #9898a4)' }}>
+                      Pick a habit on the left to configure its prerequisites and anti-chains
+                    </p>
                   </div>
                 </div>
               )}
@@ -429,15 +607,22 @@ export const HabitChainModal: React.FC<HabitChainModalProps> = ({ isOpen, onClos
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-red-500/20 border border-red-500/30 text-red-300 px-4 py-2 rounded-lg text-sm z-10"
+                  className="mx-4 my-2 p-3 rounded-xl text-xs font-medium border flex items-center gap-2"
+                  style={{
+                    backgroundColor: 'rgba(244, 63, 94, 0.15)',
+                    borderColor: 'rgba(244, 63, 94, 0.3)',
+                    color: '#fecdd3',
+                  }}
                 >
-                  {error}
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>{error}</span>
                 </motion.div>
               )}
             </div>
           </div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };

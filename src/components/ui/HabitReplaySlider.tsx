@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, ChevronRight, Calendar, Clock, X, RotateCcw, FastForward, Play, Pause } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, X, RotateCcw, FastForward, Play, Pause, Check, Zap, Smile, Meh, Frown } from 'lucide-react';
+import { HabitIconView } from '../../lib/habitIcons';
 import { useHabitStore } from '../../store/useHabitStore';
-import type { Habit, Checkin, WellnessLog } from '../../lib/types';
 import { formatLocalDate, getDayName, getMonthName } from '../../lib/dateUtils';
 import { clsx } from 'clsx';
 
@@ -12,7 +13,7 @@ interface HabitReplaySliderProps {
 }
 
 export const HabitReplaySlider: React.FC<HabitReplaySliderProps> = ({ isOpen, onClose }) => {
-  const { habits, checkins, wellnessLogs, currentDate, selectedYear, selectedMonth } = useHabitStore();
+  const { habits, checkins, wellnessLogs, currentDate } = useHabitStore();
   const [replayDate, setReplayDate] = useState(currentDate);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playDirection, setPlayDirection] = useState<'forward' | 'backward'>('forward');
@@ -85,20 +86,18 @@ export const HabitReplaySlider: React.FC<HabitReplaySliderProps> = ({ isOpen, on
       playIntervalRef.current = setInterval(() => {
         if (playDirection === 'forward') {
           goToNextDay();
-          // Stop at today
           if (formatLocalDate(replayDate) >= todayStr) {
             setIsPlaying(false);
           }
         } else {
           goToPreviousDay();
-          // Stop at 1 year ago
           const oneYearAgo = new Date(currentDate);
           oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
           if (replayDate <= oneYearAgo) {
             setIsPlaying(false);
           }
         }
-      }, 800);
+      }, 750);
     } else {
       if (playIntervalRef.current) {
         clearInterval(playIntervalRef.current);
@@ -112,7 +111,7 @@ export const HabitReplaySlider: React.FC<HabitReplaySliderProps> = ({ isOpen, on
     };
   }, [isPlaying, playDirection, replayDate, currentDate, todayStr]);
 
-  // Close on Escape
+  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -132,79 +131,97 @@ export const HabitReplaySlider: React.FC<HabitReplaySliderProps> = ({ isOpen, on
   const isToday = formatLocalDate(replayDate) === todayStr;
   const isFuture = replayDate > currentDate;
 
-  return (
+  return createPortal(
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 pb-0"
+        className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-[16px]"
         onClick={onClose}
       >
         <motion.div
-          initial={{ opacity: 0, y: '100%' }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: '100%' }}
-          className="bg-background rounded-t-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col"
+          initial={{ opacity: 0, scale: 0.96, y: 16 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: 16 }}
+          transition={{ duration: 0.2 }}
+          className="w-full max-w-2xl rounded-3xl border shadow-2xl overflow-hidden flex flex-col max-h-[88vh] bg-[#131316]"
+          style={{
+            backgroundColor: '#131316',
+            borderColor: 'var(--border-subtle, rgba(255,255,255,0.08))',
+            boxShadow: '0 25px 60px -15px rgba(0,0,0,0.95), 0 0 0 1px rgba(255,255,255,0.08)',
+            color: 'var(--text-primary, #f4f4f6)',
+          }}
           onClick={e => e.stopPropagation()}
         >
-          {/* Header with Date Display */}
-          <div className="p-4 border-b border-border flex-shrink-0">
-            <div className="flex items-center justify-between">
+          {/* Header with Date Display & Controls */}
+          <div
+            className="p-4 sm:p-5 border-b flex-shrink-0 bg-[#0e0e11]"
+            style={{
+              borderColor: 'var(--border-subtle, rgba(255,255,255,0.08))',
+              backgroundColor: '#0e0e11',
+            }}
+          >
+            <div className="flex items-center justify-between gap-3">
               <button
                 onClick={onClose}
-                className="p-2 hover:bg-accent rounded-lg transition-colors"
+                className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
+                title="Close Replay"
                 aria-label="Close replay"
               >
-                <X className="w-5 h-5 text-muted-foreground" />
+                <X className="w-5 h-5" />
               </button>
 
-              <div className="flex-1 flex items-center justify-center gap-4">
+              {/* Date Navigator */}
+              <div className="flex-1 flex items-center justify-center gap-2 sm:gap-3">
                 <button
                   onClick={goToPreviousDay}
                   disabled={isPlaying}
-                  className="p-2 hover:bg-accent rounded-lg transition-colors disabled:opacity-50"
+                  className="p-2 rounded-xl text-zinc-300 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40"
+                  title="Previous Day (Left Arrow)"
                   aria-label="Previous day"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
 
                 <div className="text-center min-w-0">
-                  <div className="flex items-center justify-center gap-2">
+                  <div className="flex items-center justify-center gap-2 flex-wrap">
                     <motion.span
                       key={replayDateStr}
-                      initial={{ opacity: 0, y: 10 }}
+                      initial={{ opacity: 0, y: 8 }}
                       animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      className="text-2xl font-bold text-foreground"
+                      exit={{ opacity: 0, y: -8 }}
+                      className="text-lg sm:text-2xl font-bold tracking-tight"
+                      style={{ color: 'var(--text-primary, #f4f4f6)' }}
                     >
                       {replayDate.getDate()} {getMonthName(replayDate.getMonth())} {replayDate.getFullYear()}
                     </motion.span>
                     {isToday && (
-                      <span className="px-2 py-0.5 bg-green-500/20 text-green-400 rounded-full text-xs font-medium">
+                      <span className="px-2.5 py-0.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-400 rounded-full text-[11px] font-bold tracking-wide">
                         TODAY
                       </span>
                     )}
                     {isFuture && (
-                      <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-400 rounded-full text-xs font-medium">
+                      <span className="px-2.5 py-0.5 bg-amber-500/15 border border-amber-500/30 text-amber-400 rounded-full text-[11px] font-bold tracking-wide">
                         FUTURE
                       </span>
                     )}
                     {!isToday && !isFuture && (
-                      <span className="px-2 py-0.5 bg-blue-500/20 text-blue-400 rounded-full text-xs font-medium">
-                        {getDayName(replayDate.getDay())}
+                      <span className="px-2.5 py-0.5 bg-indigo-500/15 border border-indigo-500/30 text-indigo-300 rounded-full text-[11px] font-bold tracking-wide">
+                        {getDayName(replayDate.getDay()).toUpperCase()}
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {scheduledCount} scheduled • {completedCount} completed • {Math.round(completionRate)}% rate
+                  <p className="text-xs mt-1" style={{ color: 'var(--text-secondary, #9898a4)' }}>
+                    {scheduledCount} scheduled • {completedCount} completed • {Math.round(completionRate)}% completed
                   </p>
                 </div>
 
                 <button
                   onClick={goToNextDay}
                   disabled={isPlaying || isFuture}
-                  className="p-2 hover:bg-accent rounded-lg transition-colors disabled:opacity-50"
+                  className="p-2 rounded-xl text-zinc-300 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40"
+                  title="Next Day (Right Arrow)"
                   aria-label="Next day"
                 >
                   <ChevronRight className="w-5 h-5" />
@@ -214,7 +231,8 @@ export const HabitReplaySlider: React.FC<HabitReplaySliderProps> = ({ isOpen, on
               <button
                 onClick={goToToday}
                 disabled={isToday}
-                className="p-2 hover:bg-accent rounded-lg transition-colors disabled:opacity-50 text-primary"
+                className="p-2 rounded-xl text-zinc-400 hover:text-white hover:bg-white/10 transition-colors disabled:opacity-40 flex-shrink-0"
+                title="Jump to Today"
                 aria-label="Go to today"
               >
                 <RotateCcw className="w-5 h-5" />
@@ -222,94 +240,98 @@ export const HabitReplaySlider: React.FC<HabitReplaySliderProps> = ({ isOpen, on
             </div>
 
             {/* Playback Controls */}
-            <div className="flex items-center justify-center gap-2 mt-3">
+            <div className="flex items-center justify-center gap-2 mt-4 pt-3 border-t" style={{ borderColor: 'var(--border-subtle, rgba(255,255,255,0.065))' }}>
               <button
                 onClick={() => setPlaySpeed('backward')}
                 className={clsx(
-                  'p-2 rounded-lg transition-colors',
+                  'p-2 rounded-xl transition-all border',
                   isPlaying && playDirection === 'backward'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'hover:bg-accent'
+                    ? 'bg-indigo-600/30 text-indigo-300 border-indigo-500/40'
+                    : 'text-zinc-400 hover:text-white hover:bg-white/[0.06] border-transparent'
                 )}
+                title="Play Backward"
                 aria-label="Play backward"
               >
-                <FastForward className="w-5 h-5" style={{ transform: 'rotate(180deg)' }} />
+                <FastForward className="w-4 h-4 rotate-180" />
               </button>
               <button
                 onClick={togglePlay}
                 className={clsx(
-                  'p-3 rounded-xl transition-colors',
-                  isPlaying ? 'bg-primary text-primary-foreground' : 'bg-accent'
+                  'px-4 py-2 rounded-xl font-semibold text-xs tracking-wide transition-all shadow-md flex items-center gap-2 border',
+                  isPlaying
+                    ? 'bg-white text-zinc-950 border-white hover:bg-zinc-200'
+                    : 'bg-indigo-600 hover:bg-indigo-500 text-white border-indigo-500'
                 )}
+                title="Spacebar to Play/Pause"
                 aria-label={isPlaying ? 'Pause' : 'Play'}
               >
-                {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5" />}
+                {isPlaying ? <Pause className="w-4 h-4 fill-current" /> : <Play className="w-4 h-4 fill-current" />}
+                <span>{isPlaying ? 'Pause Replay' : 'Play Time-Lapse'}</span>
               </button>
               <button
                 onClick={() => setPlaySpeed('forward')}
                 className={clsx(
-                  'p-2 rounded-lg transition-colors',
+                  'p-2 rounded-xl transition-all border',
                   isPlaying && playDirection === 'forward'
-                    ? 'bg-primary text-primary-foreground'
-                    : 'hover:bg-accent'
+                    ? 'bg-indigo-600/30 text-indigo-300 border-indigo-500/40'
+                    : 'text-zinc-400 hover:text-white hover:bg-white/[0.06] border-transparent'
                 )}
+                title="Play Forward"
                 aria-label="Play forward"
               >
-                <FastForward className="w-5 h-5" />
+                <FastForward className="w-4 h-4" />
               </button>
-              <span className="text-xs text-muted-foreground px-2">
-                {isPlaying ? (playDirection === 'forward' ? '▶' : '◀') : '⏸'}
-              </span>
             </div>
           </div>
 
-          {/* Wellness Log Display */}
+          {/* Daily Reflection / Wellness Summary Card */}
           <AnimatePresence mode="wait">
             {(wellnessLog || isToday) && (
               <motion.div
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="px-4 py-3 border-b border-border bg-muted/30"
+                className="px-4 sm:px-5 py-3.5 border-b flex-shrink-0"
+                style={{
+                  backgroundColor: 'var(--bg-surface-card, #17171a)',
+                  borderColor: 'var(--border-subtle, rgba(255,255,255,0.08))',
+                }}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="flex items-center gap-2 text-sm font-medium text-foreground">
-                    <Calendar className="w-4 h-4" />
+                  <h4 className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider" style={{ color: 'var(--text-secondary, #9898a4)' }}>
+                    <Calendar className="w-3.5 h-3.5 text-indigo-400" />
                     Daily Reflection
                   </h4>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">🔋</span>
+                <div className="flex items-center gap-4 sm:gap-6 flex-wrap">
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-lg bg-amber-500/15 border border-amber-500/25 text-amber-400 flex-shrink-0">
+                      <Zap className="w-4 h-4" />
+                    </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Energy</p>
-                      <p className="font-semibold text-foreground">
-                        {wellnessLog?.energy ?? '—'}/5
-                        {wellnessLog && (
-                          <span className="ml-2">
-                            {'★'.repeat(wellnessLog.energy)}{'☆'.repeat(5 - wellnessLog.energy)}
-                          </span>
-                        )}
+                      <p className="text-[11px]" style={{ color: 'var(--text-muted, #5e5e6c)' }}>Energy</p>
+                      <p className="font-bold text-sm" style={{ color: 'var(--text-primary, #f4f4f6)' }}>
+                        {wellnessLog?.energy ? `${wellnessLog.energy}/5` : '—'}
                       </p>
                     </div>
                   </div>
-                  <div className="w-px h-8 bg-border mx-2" />
-                  <div className="flex items-center gap-2">
-                    <span className="text-lg">😊</span>
+
+                  <div className="w-px h-7 bg-white/10" />
+
+                  <div className="flex items-center gap-2.5">
+                    <div className="p-1.5 rounded-lg bg-pink-500/15 border border-pink-500/25 text-pink-400 flex-shrink-0">
+                      <Smile className="w-4 h-4" />
+                    </div>
                     <div>
-                      <p className="text-xs text-muted-foreground">Mood</p>
-                      <p className="font-semibold text-foreground">
-                        {wellnessLog?.mood ?? '—'}/5
-                        {wellnessLog && (
-                          <span className="ml-2">
-                            {['😞', '😐', '🙂', '😊', '😄'][wellnessLog.mood - 1] || ''}
-                          </span>
-                        )}
+                      <p className="text-[11px]" style={{ color: 'var(--text-muted, #5e5e6c)' }}>Mood</p>
+                      <p className="font-bold text-sm" style={{ color: 'var(--text-primary, #f4f4f6)' }}>
+                        {wellnessLog?.mood ? `${wellnessLog.mood}/5` : '—'}
                       </p>
                     </div>
                   </div>
+
                   {wellnessLog?.note && (
-                    <div className="flex-1 text-sm text-muted-foreground italic">
+                    <div className="flex-1 min-w-[200px] text-xs italic px-3 py-1.5 rounded-lg border bg-white/[0.02]" style={{ borderColor: 'var(--border-subtle, rgba(255,255,255,0.065))', color: 'var(--text-secondary, #9898a4)' }}>
                       "{wellnessLog.note}"
                     </div>
                   )}
@@ -319,12 +341,17 @@ export const HabitReplaySlider: React.FC<HabitReplaySliderProps> = ({ isOpen, on
           </AnimatePresence>
 
           {/* Habits List */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          <div
+            className="flex-1 overflow-y-auto p-4 sm:p-5 space-y-2.5"
+            style={{ backgroundColor: 'var(--bg-surface-elevated, #131316)' }}
+          >
             {scheduledToday.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Calendar className="w-12 h-12 mx-auto mb-3 opacity-20" />
-                <p className="text-lg">No habits scheduled</p>
-                <p className="text-sm mt-1">for {getDayName(replayDate.getDay())}</p>
+              <div className="text-center py-12 px-4">
+                <div className="w-12 h-12 rounded-2xl mx-auto mb-3 flex items-center justify-center bg-white/[0.03] border border-white/5">
+                  <Calendar className="w-6 h-6 text-zinc-500" />
+                </div>
+                <p className="text-sm font-semibold text-zinc-300">No habits scheduled</p>
+                <p className="text-xs text-zinc-500 mt-1">None of your active routines were scheduled for {getDayName(replayDate.getDay())}</p>
               </div>
             ) : (
               scheduledToday.map((habit, index) => {
@@ -335,79 +362,97 @@ export const HabitReplaySlider: React.FC<HabitReplaySliderProps> = ({ isOpen, on
                 return (
                   <motion.div
                     key={habit.id}
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ delay: index * 0.03 }}
+                    exit={{ opacity: 0, y: -12 }}
+                    transition={{ delay: index * 0.02 }}
                     className={clsx(
-                      'group relative p-4 rounded-xl border transition-all',
+                      'p-3.5 sm:p-4 rounded-2xl border transition-all',
                       isCompleted
-                        ? 'bg-green-500/10 border-green-500/30'
-                        : 'bg-card border-border/50 hover:border-border'
+                        ? 'border-emerald-500/30'
+                        : 'border-white/[0.065]'
                     )}
+                    style={{
+                      backgroundColor: isCompleted ? 'rgba(16, 185, 129, 0.06)' : 'var(--bg-surface-card, #17171a)',
+                    }}
                   >
                     <div className="flex items-center gap-3">
                       {/* Completion indicator */}
-                      <motion.div
+                      <div
                         className={clsx(
-                          'w-10 h-10 rounded-xl flex items-center justify-center font-bold text-lg transition-all',
+                          'w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm transition-all flex-shrink-0 border',
                           isCompleted
-                            ? 'bg-green-500 text-white scale-100'
-                            : 'bg-muted border-2 border-border'
+                            ? 'bg-emerald-500 text-white border-emerald-400 shadow-md shadow-emerald-950/50'
+                            : 'bg-white/[0.04] border-white/10'
                         )}
-                        animate={{ scale: isCompleted ? 1 : 1 }}
                       >
-                        {isCompleted && <span className="text-xl">✓</span>}
-                        {!isCompleted && habit.emoji}
-                      </motion.div>
+                        {isCompleted ? (
+                          <Check className="w-5 h-5 text-white stroke-[2.5]" />
+                        ) : (
+                          <HabitIconView iconId={habit.emoji} color={habit.color} size={18} />
+                        )}
+                      </div>
 
                       {/* Habit info */}
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-foreground truncate">{habit.name}</span>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm truncate" style={{ color: 'var(--text-primary, #f4f4f6)' }}>
+                            {habit.name}
+                          </span>
                           {isNumeric && habit.target_value && habit.unit && (
-                            <span className="text-xs text-muted-foreground px-2 py-0.5 bg-muted rounded">
+                            <span
+                              className="text-[11px] px-2 py-0.5 rounded-md border font-medium"
+                              style={{
+                                backgroundColor: 'var(--bg-surface-subtle, #1c1c20)',
+                                borderColor: 'var(--border-subtle, rgba(255,255,255,0.08))',
+                                color: 'var(--text-secondary, #9898a4)',
+                              }}
+                            >
                               Target: {habit.target_value} {habit.unit}
                             </span>
                           )}
                         </div>
+
+                        {/* Numeric Progress Bar */}
                         {isNumeric && checkinData && checkinData.value > 0 && (
-                          <div className="mt-1 h-2 bg-muted rounded-full overflow-hidden">
+                          <div className="mt-2 h-1.5 w-full bg-white/10 rounded-full overflow-hidden">
                             <motion.div
-                              className="h-full bg-primary rounded-full"
+                              className="h-full bg-emerald-500 rounded-full"
                               initial={{ width: 0 }}
                               animate={{ width: `${Math.min(100, (checkinData.value / (habit.target_value || 1)) * 100)}%` }}
-                              transition={{ delay: 0.2, duration: 0.5 }}
+                              transition={{ duration: 0.4 }}
                             />
                           </div>
                         )}
+
                         {checkinData?.note && (
-                          <p className="mt-1 text-sm text-muted-foreground italic truncate">
-                            {checkinData.note}
+                          <p className="mt-1 text-xs italic truncate" style={{ color: 'var(--text-secondary, #9898a4)' }}>
+                            "{checkinData.note}"
                           </p>
                         )}
                       </div>
 
                       {/* Status badge */}
-                      {isCompleted && (
-                        <motion.span
-                          initial={{ opacity: 0, scale: 0.5 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          className="px-2 py-1 bg-green-500/20 text-green-400 rounded-full text-xs font-medium"
-                        >
+                      {isCompleted ? (
+                        <span className="px-2.5 py-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-full text-xs font-semibold flex-shrink-0">
                           Done
-                        </motion.span>
+                        </span>
+                      ) : (
+                        <span className="px-2.5 py-1 bg-white/[0.04] border border-white/5 text-zinc-500 rounded-full text-xs font-medium flex-shrink-0">
+                          Pending
+                        </span>
                       )}
                     </div>
 
                     {/* Mood indicator on checkin */}
                     {checkinData?.mood && (
-                      <div className="mt-3 pt-3 border-t border-border/50 flex items-center gap-2">
-                        <span className="text-sm">Mood:</span>
-                        <span className="text-lg">
-                          {{ tired: '😞', neutral: '😐', good: '😊', energized: '⚡' }[checkinData.mood] || '😐'}
-                        </span>
-                        <span className="text-xs text-muted-foreground capitalize">
+                      <div className="mt-3 pt-2.5 border-t border-white/5 flex items-center gap-2">
+                        <span className="text-[11px]" style={{ color: 'var(--text-muted, #5e5e6c)' }}>Mood:</span>
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold capitalize" style={{ color: 'var(--text-primary, #f4f4f6)' }}>
+                          {checkinData.mood === 'energized' && <Zap className="w-3.5 h-3.5 text-amber-400" />}
+                          {checkinData.mood === 'good' && <Smile className="w-3.5 h-3.5 text-emerald-400" />}
+                          {checkinData.mood === 'neutral' && <Meh className="w-3.5 h-3.5 text-blue-400" />}
+                          {checkinData.mood === 'tired' && <Frown className="w-3.5 h-3.5 text-rose-400" />}
                           {checkinData.mood}
                         </span>
                       </div>
@@ -419,33 +464,36 @@ export const HabitReplaySlider: React.FC<HabitReplaySliderProps> = ({ isOpen, on
 
             {/* Unscheduled habits (collapsed) */}
             {activeHabits.filter(h => !scheduledToday.includes(h)).length > 0 && (
-              <details className="group">
-                <summary className="flex items-center justify-between p-3 text-sm text-muted-foreground hover:text-foreground cursor-pointer">
+              <details className="group pt-2">
+                <summary className="flex items-center justify-between p-3 text-xs font-semibold rounded-xl cursor-pointer border hover:bg-white/[0.02] transition-colors" style={{ borderColor: 'var(--border-subtle, rgba(255,255,255,0.065))', color: 'var(--text-secondary, #9898a4)' }}>
                   <span>+ {activeHabits.filter(h => !scheduledToday.includes(h)).length} unscheduled habits</span>
-                  <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90" />
+                  <ChevronRight className="w-4 h-4 transition-transform group-open:rotate-90 text-zinc-500" />
                 </summary>
-                <div className="space-y-1 px-4 pb-2">
+                <div className="space-y-1.5 px-2 pt-2">
                   {activeHabits.filter(h => !scheduledToday.includes(h)).map(habit => {
                     const checkinData = replayCheckins.find(c => c.habit.id === habit.id);
                     const isCompleted = checkinData?.isCompleted || false;
                     return (
-                      <motion.div
+                      <div
                         key={habit.id}
-                        initial={{ opacity: 0, height: 0 }}
-                        animate={{ opacity: 1, height: 'auto' }}
-                        className={clsx(
-                          'p-3 rounded-lg text-sm transition-colors',
-                          isCompleted ? 'bg-green-500/10' : 'hover:bg-muted'
-                        )}
+                        className="p-2.5 rounded-xl text-xs flex items-center justify-between border"
+                        style={{
+                          backgroundColor: isCompleted ? 'rgba(16, 185, 129, 0.08)' : 'var(--bg-surface-card, #17171a)',
+                          borderColor: isCompleted ? 'rgba(16, 185, 129, 0.25)' : 'var(--border-subtle, rgba(255,255,255,0.065))',
+                        }}
                       >
-                        <div className="flex items-center gap-2">
-                          <span className="text-lg">{habit.emoji}</span>
-                          <span className={clsx('truncate', isCompleted ? 'text-green-400' : 'text-foreground')}>
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <HabitIconView iconId={habit.emoji} color={habit.color} size={15} />
+                          <span className={clsx('truncate font-medium', isCompleted ? 'text-emerald-400' : 'text-zinc-300')}>
                             {habit.name}
                           </span>
-                          {isCompleted && <span className="ml-auto text-xs text-green-400">✓ Done</span>}
                         </div>
-                      </motion.div>
+                        {isCompleted && (
+                          <span className="text-[11px] font-semibold text-emerald-400 inline-flex items-center gap-1">
+                            <Check className="w-3.5 h-3.5" /> Done
+                          </span>
+                        )}
+                      </div>
                     );
                   })}
                 </div>
@@ -453,26 +501,32 @@ export const HabitReplaySlider: React.FC<HabitReplaySliderProps> = ({ isOpen, on
             )}
           </div>
 
-          {/* Date Scrubber at bottom */}
-          <div className="p-4 border-t border-border flex-shrink-0">
+          {/* Date Scrubber Timeline Slider at Bottom */}
+          <div
+            className="p-4 sm:p-5 border-t flex-shrink-0"
+            style={{
+              borderColor: 'var(--border-subtle, rgba(255,255,255,0.08))',
+              backgroundColor: 'var(--bg-surface, #0e0e11)',
+            }}
+          >
             <div className="relative">
               <input
                 type="range"
                 min={0}
                 max={365}
-                value={Math.floor((currentDate.getTime() - replayDate.getTime()) / (1000 * 60 * 60 * 24))}
+                value={Math.max(0, Math.floor((currentDate.getTime() - replayDate.getTime()) / (1000 * 60 * 60 * 24)))}
                 onChange={e => {
                   const daysBack = parseInt(e.target.value);
                   const newDate = new Date(currentDate);
                   newDate.setDate(newDate.getDate() - daysBack);
                   setReplayDate(newDate);
                 }}
-                className="w-full h-2 bg-muted appearance-none rounded-full cursor-pointer"
+                className="w-full h-2 rounded-full cursor-pointer appearance-none accent-indigo-500"
                 style={{
-                  background: 'linear-gradient(to right, var(--primary) 0%, var(--primary) 50%, var(--muted) 50%, var(--muted) 100%)'
+                  backgroundColor: 'var(--bg-surface-subtle, #1c1c20)',
                 }}
               />
-              <div className="flex justify-between text-xs text-muted-foreground mt-1">
+              <div className="flex justify-between text-xs font-semibold mt-2" style={{ color: 'var(--text-muted, #5e5e6c)' }}>
                 <span>Today</span>
                 <span>1 Year Ago</span>
               </div>
@@ -480,6 +534,7 @@ export const HabitReplaySlider: React.FC<HabitReplaySliderProps> = ({ isOpen, on
           </div>
         </motion.div>
       </motion.div>
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body
   );
 };

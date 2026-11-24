@@ -131,6 +131,8 @@ export async function checkGitHubUpdate(): Promise<UpdateInfo | null> {
   try {
     localStorage.setItem(LAST_CHECKED_KEY, new Date().toISOString());
 
+    const runtimeVersion = (typeof window !== 'undefined' && (await window.api?.os?.getVersion?.().catch(() => null))) || APP_VERSION;
+
     const res = await fetch(GITHUB_API_LATEST_RELEASE, {
       headers: {
         Accept: 'application/vnd.github.v3+json',
@@ -142,8 +144,8 @@ export async function checkGitHubUpdate(): Promise<UpdateInfo | null> {
         // No releases tagged yet in GitHub repository
         return {
           hasUpdate: false,
-          currentVersion: APP_VERSION,
-          latestVersion: APP_VERSION,
+          currentVersion: runtimeVersion,
+          latestVersion: runtimeVersion,
           releaseTitle: 'Up to date',
           releaseNotes: 'You are running the latest version.',
           publishedAt: '',
@@ -154,8 +156,8 @@ export async function checkGitHubUpdate(): Promise<UpdateInfo | null> {
         // GitHub rate limited
         return {
           hasUpdate: false,
-          currentVersion: APP_VERSION,
-          latestVersion: APP_VERSION,
+          currentVersion: runtimeVersion,
+          latestVersion: runtimeVersion,
           releaseTitle: 'Rate limit reached',
           releaseNotes: 'GitHub API rate limit reached. You can view releases directly on GitHub.',
           publishedAt: '',
@@ -167,7 +169,7 @@ export async function checkGitHubUpdate(): Promise<UpdateInfo | null> {
 
     const data: GitHubRelease = await res.json();
     const latestVersion = (data.tag_name || '').replace(/^v/, '');
-    const hasUpdate = compareVersions(latestVersion, APP_VERSION) > 0;
+    const hasUpdate = compareVersions(latestVersion, runtimeVersion) > 0;
 
     const isAndroid = isAndroidApp();
     const isWindows = typeof navigator !== 'undefined' && navigator.userAgent.includes('Windows');
@@ -198,7 +200,7 @@ export async function checkGitHubUpdate(): Promise<UpdateInfo | null> {
 
     return {
       hasUpdate,
-      currentVersion: APP_VERSION,
+      currentVersion: runtimeVersion,
       latestVersion,
       releaseTitle: data.name || `Version ${latestVersion}`,
       releaseNotes: formatReleaseNotes(data.body || ''),

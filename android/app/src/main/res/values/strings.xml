@@ -4,4 +4,8 @@
     <string name="title_activity_main">Zion HabitTracker</string>
     <string name="package_name">com.satyanarayana.zion</string>
     <string name="custom_url_scheme">com.satyanarayana.zion</string>
+    <string name="widget_habits_name">Zion Habits &amp; Momentum</string>
+    <string name="widget_habits_description">1-Tap daily habit check-ins, consistency streaks, and daily completion pace on your home screen.</string>
+    <string name="widget_timer_name">Zion Focus Timer HUD</string>
+    <string name="widget_timer_description">Live countdown clock, focus session controls, and active habit tracker HUD.</string>
 </resources>

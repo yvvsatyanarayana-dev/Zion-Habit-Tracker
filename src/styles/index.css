@@ -70,6 +70,16 @@
   --faint: var(--text-dim);
 }
 
+/* =========================================================================
+   Resize Performance Guard: Prevent Shape Flickering & Layout Thrashing
+   ========================================================================= */
+body.is-resizing,
+body.is-resizing * {
+  transition: none !important;
+  animation: none !important;
+  user-select: none !important;
+}
+
 [data-theme='light'] {
   /* Crisp Studio Light Theme (High Contrast Studio Minimalist Aesthetic) */
   --bg-canvas: #f1f5f9;          /* Cool crisp canvas background */
@@ -134,13 +144,51 @@
   border-color: var(--border-subtle);
 }
 
+html.timer-widget-mode,
+html.timer-widget-mode body,
+html.timer-widget-mode #root {
+  background: transparent !important;
+  background-color: transparent !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  width: 100% !important;
+  height: 100% !important;
+}
+
+html,
+body,
+#root,
+.mobile-app,
+.mobile-app-body,
+main,
+.mobile-main {
+  overflow-x: hidden !important;
+  max-width: 100vw !important;
+  width: 100%;
+}
+
+/* Strictly suppress any horizontal scrollbar on main app container & viewport */
+html::-webkit-scrollbar:horizontal,
+body::-webkit-scrollbar:horizontal,
+#root::-webkit-scrollbar:horizontal,
+.mobile-app::-webkit-scrollbar:horizontal,
+.mobile-app-body::-webkit-scrollbar:horizontal,
+main::-webkit-scrollbar:horizontal,
+.mobile-main::-webkit-scrollbar:horizontal {
+  display: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  opacity: 0 !important;
+}
+
 body {
   background-color: var(--bg-canvas);
   color: var(--text-primary);
   font-family: var(--font-sans);
   margin: 0;
   padding: 0;
-  overflow: hidden;
+  overflow-x: hidden !important;
   user-select: none;
   -webkit-font-smoothing: antialiased;
   transition: background-color var(--transition-fast), color var(--transition-fast);
@@ -149,6 +197,34 @@ body {
 .font-num {
   font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
+}
+
+/* Fallbacks for generic component tokens to Zion Obsidian tokens */
+.bg-background {
+  background-color: var(--bg-surface-elevated) !important;
+}
+.text-foreground {
+  color: var(--text-primary) !important;
+}
+.text-muted-foreground {
+  color: var(--text-secondary) !important;
+}
+.border-border {
+  border-color: var(--border-subtle) !important;
+}
+.bg-muted {
+  background-color: var(--bg-surface-subtle) !important;
+}
+.bg-input {
+  background-color: var(--bg-surface-subtle) !important;
+  color: var(--text-primary) !important;
+  border-color: var(--border-subtle) !important;
+}
+.bg-card {
+  background-color: var(--bg-surface-card) !important;
+}
+.hover\:bg-accent:hover {
+  background-color: var(--bg-surface-hover) !important;
 }
 
 /* Electron titlebar drag regions */
@@ -551,10 +627,28 @@ input[type=number] {
   }
 }
 
+.animate-slide-up {
+  animation: mobile-sheet-slide-up 240ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
 html,
 body,
 #root {
   min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+.habits-grid-scroll {
+  /* GPU acceleration only on grid scroll */
+  will-change: scroll-position;
+}
+
+.mobile-main {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden !important;
 }
 
 body {
@@ -1076,9 +1170,9 @@ body {
   }
 
   .habits-grid-habit-column {
-    width: 120px !important;
-    min-width: 120px !important;
-    max-width: 120px !important;
+    width: 175px !important;
+    min-width: 175px !important;
+    max-width: 200px !important;
     padding-right: 8px !important;
     padding-left: 8px !important;
   }
@@ -1294,9 +1388,9 @@ body {
   }
 
   .habits-grid-habit-column {
-    width: 94px !important;
-    min-width: 94px !important;
-    max-width: 94px !important;
+    width: 150px !important;
+    min-width: 150px !important;
+    max-width: 165px !important;
   }
 
   .habits-grid-day-column {
@@ -1310,4 +1404,246 @@ body {
   .habits-grid-today-label {
     display: none;
   }
+}
+
+/* =========================================================================
+   Performance & GPU Compositing Optimizations
+   ========================================================================= */
+.gpu-accelerated {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.cv-auto {
+  content-visibility: auto;
+  contain-intrinsic-size: 1px 52px;
+}
+
+/* =========================================================================
+   Zion Update Receiver Toast (Doodle-Desk Native Experience)
+   ========================================================================= */
+
+.doodle-update-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 99999;
+  max-width: 380px;
+  min-width: 300px;
+  background: rgba(18, 18, 24, 0.94);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  padding: 12px 14px;
+  animation: updateSlideInUp 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  font-family: inherit;
+  color: #f4f5f8;
+}
+
+[data-theme='light'] .doodle-update-toast,
+.theme--light .doodle-update-toast {
+  background: rgba(255, 255, 255, 0.96);
+  border-color: rgba(0, 0, 0, 0.12);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.15), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  color: #09090b;
+}
+
+@keyframes updateSlideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.update-toast-content {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.update-toast-content.column {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.update-toast-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.update-toast-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  background: rgba(255, 255, 255, 0.08);
+  color: #a1a1aa;
+}
+
+[data-theme='light'] .update-toast-icon,
+.theme--light .update-toast-icon {
+  background: rgba(0, 0, 0, 0.05);
+  color: #71717a;
+}
+
+.update-toast-icon.spin {
+  animation: updateSpinSlow 2s linear infinite;
+  color: #818cf8;
+}
+
+.update-toast-icon.highlight {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+}
+
+.update-toast-icon.success {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+}
+
+.update-toast-icon.error {
+  background: rgba(244, 63, 94, 0.15);
+  color: #f43f5e;
+}
+
+@keyframes updateSpinSlow {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.update-toast-text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.update-toast-title {
+  font-size: 0.82rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.update-toast-desc {
+  font-size: 0.72rem;
+  color: #a1a1aa;
+  line-height: 1.35;
+}
+
+[data-theme='light'] .update-toast-desc,
+.theme--light .update-toast-desc {
+  color: #71717a;
+}
+
+.update-toast-close {
+  background: transparent;
+  border: none;
+  color: #71717a;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.update-toast-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+[data-theme='light'] .update-toast-close:hover,
+.theme--light .update-toast-close:hover {
+  background: rgba(0, 0, 0, 0.06);
+  color: #000000;
+}
+
+.update-toast-progress-track {
+  width: 100%;
+  height: 5px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 9999px;
+  overflow: hidden;
+}
+
+[data-theme='light'] .update-toast-progress-track,
+.theme--light .update-toast-progress-track {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+.update-toast-progress-bar {
+  height: 100%;
+  background: #6366f1;
+  border-radius: 9999px;
+  transition: width 0.2s ease;
+}
+
+.update-toast-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.update-toast-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 0.76rem;
+  font-weight: 600;
+  border-radius: 8px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.update-toast-btn.primary {
+  background: #10b981;
+  color: #ffffff;
+  border-color: #059669;
+}
+
+.update-toast-btn.primary:hover {
+  background: #059669;
+}
+
+.update-toast-btn.secondary {
+  background: rgba(255, 255, 255, 0.08);
+  color: #e4e4e7;
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.update-toast-btn.secondary:hover {
+  background: rgba(255, 255, 255, 0.14);
+}
+
+/* =========================================================================
+   Hardware-Accelerated Composite Layers & Rendering Performance
+   ========================================================================= */
+.circle-checkbox,
+.activity-ring-svg,
+.rounded-bar-chart {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.habits-grid-virtual-row {
+  contain: content;
 }

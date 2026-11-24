@@ -6,11 +6,11 @@ import { computeStreakStats } from '../../lib/statsUtils';
 import { computeMasteryInfo } from '../../lib/masteryUtils';
 
 export const MasteryCard: React.FC = () => {
-  const habits = useHabitStore((s) => s.habits || []);
-  const allCheckinsList = useHabitStore((s) => s.allCheckinsList || []);
-  const focusSessions = useHabitStore((s) => s.focusSessions || []);
-  const wellnessLogs = useHabitStore((s) => s.wellnessLogs || {});
-  const currentDate = useHabitStore((s) => s.currentDate || new Date());
+  const habits = useHabitStore((s) => s.habits);
+  const allCheckinsList = useHabitStore((s) => s.allCheckinsList);
+  const focusSessions = useHabitStore((s) => s.focusSessions);
+  const wellnessLogs = useHabitStore((s) => s.wellnessLogs);
+  const currentDate = useHabitStore((s) => s.currentDate);
   const streakThreshold = useHabitStore((s) => s.settings?.streak_threshold ?? 50);
   const setShareCardOpen = useHabitStore((s) => s.setShareCardOpen);
 

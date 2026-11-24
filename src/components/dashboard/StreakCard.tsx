@@ -4,7 +4,7 @@ import { Check, Flame, Shield } from 'lucide-react';
 import { computeStreakStats } from '../../lib/statsUtils';
 import { useHabitStore } from '../../store/useHabitStore';
 
-export const StreakCard: React.FC = () => {
+export const StreakCard: React.FC = React.memo(() => {
   const habits = useHabitStore((s) => s.habits);
   const allCheckinsList = useHabitStore((s) => s.allCheckinsList);
   const streakThreshold = useHabitStore((s) => s.settings.streak_threshold);
@@ -15,12 +15,16 @@ export const StreakCard: React.FC = () => {
     return new Set(streakShields?.shield_events?.map((e) => e.date) || []);
   }, [streakShields]);
 
-  const stats = computeStreakStats(
-    habits,
-    allCheckinsList,
-    streakThreshold,
-    currentDate,
-    shieldDates
+  const stats = useMemo(
+    () =>
+      computeStreakStats(
+        habits,
+        allCheckinsList,
+        streakThreshold,
+        currentDate,
+        shieldDates
+      ),
+    [habits, allCheckinsList, streakThreshold, currentDate, shieldDates]
   );
 
   return (
@@ -145,4 +149,5 @@ export const StreakCard: React.FC = () => {
       </div>
     </Card>
   );
-};
+});
+StreakCard.displayName = 'StreakCard';

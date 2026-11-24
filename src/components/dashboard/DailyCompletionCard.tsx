@@ -4,7 +4,7 @@ import { RoundedBarChart, DayBarData } from '../ui/RoundedBar';
 import { computeMonthDayStats } from '../../lib/statsUtils';
 import { useHabitStore } from '../../store/useHabitStore';
 
-export const DailyCompletionCard: React.FC = () => {
+export const DailyCompletionCard: React.FC = React.memo(() => {
   const habits = useHabitStore((s) => s.habits);
   const checkins = useHabitStore((s) => s.checkins);
   const selectedYear = useHabitStore((s) => s.selectedYear);
@@ -13,27 +13,35 @@ export const DailyCompletionCard: React.FC = () => {
   const streakThreshold = useHabitStore((s) => s.settings.streak_threshold);
   const currentDate = useHabitStore((s) => s.currentDate);
 
-  const { days, overallAverageRate } = computeMonthDayStats(
-    habits,
-    checkins,
-    selectedYear,
-    selectedMonth,
-    weekStartDay,
-    streakThreshold,
-    currentDate
+  const { days, overallAverageRate } = React.useMemo(
+    () =>
+      computeMonthDayStats(
+        habits,
+        checkins,
+        selectedYear,
+        selectedMonth,
+        weekStartDay,
+        streakThreshold,
+        currentDate
+      ),
+    [habits, checkins, selectedYear, selectedMonth, weekStartDay, streakThreshold, currentDate]
   );
 
-  const barData: DayBarData[] = days.map((d) => ({
-    dateStr: d.dateStr,
-    dayOfMonth: d.dayOfMonth,
-    weekdayLabel: d.weekdayLabel,
-    completed: d.completedCount,
-    total: d.scheduledCount,
-    rate: d.rate,
-    isToday: d.isToday,
-    isPast: d.isPast,
-    isFuture: d.isFuture,
-  }));
+  const barData: DayBarData[] = React.useMemo(
+    () =>
+      days.map((d) => ({
+        dateStr: d.dateStr,
+        dayOfMonth: d.dayOfMonth,
+        weekdayLabel: d.weekdayLabel,
+        completed: d.completedCount,
+        total: d.scheduledCount,
+        rate: d.rate,
+        isToday: d.isToday,
+        isPast: d.isPast,
+        isFuture: d.isFuture,
+      })),
+    [days]
+  );
 
   const avgPct = Math.round(overallAverageRate * 100);
 
@@ -76,4 +84,5 @@ export const DailyCompletionCard: React.FC = () => {
       </div>
     </Card>
   );
-};
+});
+DailyCompletionCard.displayName = 'DailyCompletionCard';

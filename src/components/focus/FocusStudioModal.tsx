@@ -44,9 +44,9 @@ export const FocusStudioModal: React.FC = () => {
 
 const FocusStudioModalInner: React.FC = () => {
   const setFocusStudioOpen = useHabitStore((s) => s.setFocusStudioOpen);
-  const habits = useHabitStore((s) => s.habits || []);
-  const focusSessions = useHabitStore((s) => s.focusSessions || []);
-  const currentDate = useHabitStore((s) => s.currentDate || new Date());
+  const habits = useHabitStore((s) => s.habits);
+  const focusSessions = useHabitStore((s) => s.focusSessions);
+  const currentDate = useHabitStore((s) => s.currentDate);
   const logFocusSession = useHabitStore((s) => s.logFocusSession);
 
   const activeHabitTimer = useHabitStore((s) => s.activeHabitTimer);

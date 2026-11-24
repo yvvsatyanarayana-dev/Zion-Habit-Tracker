@@ -19,6 +19,7 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
+import { sound } from '../../lib/audio';
 import { useHabitStore } from '../../store/useHabitStore';
 import { formatLocalDate } from '../../lib/dateUtils';
 import { isHabitScheduledOnDay, computeStreakStats } from '../../lib/statsUtils';
@@ -46,11 +47,11 @@ export const TitleBar: React.FC = () => {
   const setTab = useHabitStore((s) => s.setTab);
   const activeTab = useHabitStore((s) => s.activeTab);
 
-  const habits = useHabitStore((s) => s.habits || []);
-  const checkins = useHabitStore((s) => s.checkins || {});
-  const allCheckinsList = useHabitStore((s) => s.allCheckinsList || []);
-  const settings = useHabitStore((s) => s.settings || {});
-  const currentDate = useHabitStore((s) => s.currentDate || new Date());
+  const habits = useHabitStore((s) => s.habits);
+  const checkins = useHabitStore((s) => s.checkins);
+  const allCheckinsList = useHabitStore((s) => s.allCheckinsList);
+  const settings = useHabitStore((s) => s.settings);
+  const currentDate = useHabitStore((s) => s.currentDate);
 
   const todayStr = formatLocalDate(currentDate);
   const todayWday = currentDate.getDay();
@@ -60,14 +61,23 @@ export const TitleBar: React.FC = () => {
   const streakStats = computeStreakStats(habits, allCheckinsList, settings.streak_threshold, currentDate);
 
   useEffect(() => {
+    let debounceTimer: ReturnType<typeof setTimeout> | null = null;
     const updateMaxState = () => {
-      if (window.api) {
-        window.api.window.isMaximized().then(setIsMaximized).catch(() => {});
-      }
+      if (debounceTimer) clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        if (window.api) {
+          window.api.window.isMaximized().then(setIsMaximized).catch(() => {});
+        }
+      }, 100);
     };
-    updateMaxState();
-    window.addEventListener('resize', updateMaxState);
-    return () => window.removeEventListener('resize', updateMaxState);
+    if (window.api) {
+      window.api.window.isMaximized().then(setIsMaximized).catch(() => {});
+    }
+    window.addEventListener('resize', updateMaxState, { passive: true });
+    return () => {
+      window.removeEventListener('resize', updateMaxState);
+      if (debounceTimer) clearTimeout(debounceTimer);
+    };
   }, []);
 
   // Close export menu when clicking outside or pressing Escape
@@ -145,10 +155,10 @@ export const TitleBar: React.FC = () => {
         backgroundColor: 'var(--bg-surface)',
         borderColor: 'var(--border-subtle)',
       }}
-      className="desktop-titlebar h-[38px] w-full flex items-center justify-between select-none titlebar-drag border-b z-50 flex-shrink-0 relative transition-colors duration-150 pl-2.5 pr-0"
+      className="desktop-titlebar h-[38px] w-full flex items-center justify-between select-none titlebar-drag border-b z-50 flex-shrink-0 relative transition-colors duration-150 pl-2.5 pr-0 gap-2"
     >
       {/* Left: Professional Brand Emblem & Progress Chip */}
-      <div className="flex items-center gap-2.5 titlebar-nodrag pl-0.5 flex-shrink-0">
+      <div className="flex items-center gap-2 titlebar-nodrag pl-0.5 flex-shrink-0">
         <div className="flex items-center gap-2">
           <img
             src={appLogo}
@@ -168,7 +178,7 @@ export const TitleBar: React.FC = () => {
               backgroundColor: 'var(--bg-surface-elevated)',
               borderColor: 'var(--border-subtle)',
             }}
-            className="flex items-center gap-2 px-2 py-0.5 rounded-[5px] border text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] transition-all cursor-pointer flex-shrink-0"
+            className="hidden md:flex items-center gap-2 px-2 py-0.5 rounded-[5px] border text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] transition-all cursor-pointer flex-shrink-0"
             title="Today's progress · Click to jump to Today"
           >
             <div className="flex items-center gap-1.5 font-num text-[11px] font-semibold">
@@ -188,16 +198,16 @@ export const TitleBar: React.FC = () => {
         )}
       </div>
 
-      {/* Center: Clean Omnibar - Perfectly Centered in TopBar */}
+      {/* Center: Clean Omnibar (Responsive Centered Flex Rail - Zero Collision) */}
       {authScreen === 'app' && (
-        <div className="absolute left-1/2 -translate-x-1/2 titlebar-nodrag flex items-center justify-center pointer-events-none z-10">
+        <div className="flex-1 flex items-center justify-center min-w-0 px-2 titlebar-nodrag pointer-events-none">
           <button
             onClick={() => setCommandPaletteOpen(true)}
             style={{
               backgroundColor: 'var(--bg-surface-elevated)',
               borderColor: 'var(--border-subtle)',
             }}
-            className="h-[27px] w-[200px] sm:w-[230px] md:w-[260px] px-2.5 rounded-[5px] border hover:border-[var(--border-medium)] flex items-center justify-between text-[11px] font-medium text-[var(--text-muted)] transition-all group cursor-pointer shadow-sm hover:shadow pointer-events-auto"
+            className="h-[27px] w-full max-w-[260px] min-w-[140px] px-2.5 rounded-[5px] border hover:border-[var(--border-medium)] flex items-center justify-between text-[11px] font-medium text-[var(--text-muted)] transition-all group cursor-pointer shadow-sm hover:shadow pointer-events-auto"
             title="Command Palette & Quick Search (Ctrl+K)"
           >
             <div className="flex items-center gap-2 truncate min-w-0">
@@ -227,7 +237,6 @@ export const TitleBar: React.FC = () => {
       <div className="flex items-center h-full titlebar-nodrag gap-1.5 flex-shrink-0 relative z-20">
         {authScreen === 'app' && (
           <>
-
             {/* User Profile Pill button - Always visible & prominent */}
             {currentUser && (
               <button
@@ -242,7 +251,7 @@ export const TitleBar: React.FC = () => {
                       ? 'var(--border-strong)'
                       : 'var(--border-subtle)',
                 }}
-                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-[5px] border text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] transition-all cursor-pointer flex-shrink-0 ${
+                className={`flex items-center gap-1.5 px-2 py-1 rounded-[5px] border text-xs text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] transition-all cursor-pointer flex-shrink-0 ${
                   activeTab === 'profile'
                     ? 'text-[var(--text-primary)] font-semibold shadow-sm'
                     : ''
@@ -263,7 +272,7 @@ export const TitleBar: React.FC = () => {
                 >
                   {currentUser.name ? currentUser.name[0].toUpperCase() : currentUser.username ? currentUser.username[0].toUpperCase() : 'U'}
                 </div>
-                <span className="text-[11px] font-semibold truncate max-w-[65px] hidden lg:inline">
+                <span className="text-[11px] font-semibold truncate max-w-[55px] hidden xl:inline">
                   {currentUser.name ? currentUser.name.split(' ')[0] : currentUser.username || 'User'}
                 </span>
               </button>

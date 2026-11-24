@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Card } from '../ui/Card';
 import { computeMonthDayStats } from '../../lib/statsUtils';
 import { getWeekdayLabels } from '../../lib/dateUtils';
 import { useHabitStore } from '../../store/useHabitStore';
 
-export const MonthCalendarCard: React.FC = () => {
+export const MonthCalendarCard: React.FC = React.memo(() => {
   const habits = useHabitStore((s) => s.habits);
   const checkins = useHabitStore((s) => s.checkins);
   const selectedYear = useHabitStore((s) => s.selectedYear);
@@ -22,17 +23,21 @@ export const MonthCalendarCard: React.FC = () => {
     y: number;
   } | null>(null);
 
-  const { days } = computeMonthDayStats(
-    habits,
-    checkins,
-    selectedYear,
-    selectedMonth,
-    weekStartDay,
-    streakThreshold,
-    currentDate
+  const { days } = React.useMemo(
+    () =>
+      computeMonthDayStats(
+        habits,
+        checkins,
+        selectedYear,
+        selectedMonth,
+        weekStartDay,
+        streakThreshold,
+        currentDate
+      ),
+    [habits, checkins, selectedYear, selectedMonth, weekStartDay, streakThreshold, currentDate]
   );
 
-  const weekdayHeaders = getWeekdayLabels(weekStartDay);
+  const weekdayHeaders = React.useMemo(() => getWeekdayLabels(weekStartDay), [weekStartDay]);
 
   const firstDay = days[0];
   const firstDayOffset = firstDay ? (firstDay.isFirstDayOfWeek ? 0 : (firstDay.weekday - (weekStartDay === 'sun' ? 0 : weekStartDay === 'mon' ? 1 : 4) + 7) % 7) : 0;
@@ -111,7 +116,7 @@ export const MonthCalendarCard: React.FC = () => {
                 style={{
                   backgroundColor: circleBg,
                 }}
-                className={`w-7 h-7 rounded-full flex items-center justify-center font-num text-[11px] font-semibold transition-transform cursor-pointer hover:scale-110 ${
+                className={`w-7 h-7 rounded-full flex items-center justify-center font-num text-[11px] font-semibold transition-all cursor-pointer hover:brightness-135 hover:ring-2 hover:ring-white/90 ${
                   d.isToday ? 'ring-2 ring-emerald-500 ring-offset-2 ring-offset-[var(--bg-surface-elevated)] font-black' : ''
                 } ${
                   d.isFuture
@@ -145,18 +150,19 @@ export const MonthCalendarCard: React.FC = () => {
       </div>
 
       {/* Floating tooltip */}
-      {hoveredDate && (
+      {hoveredDate && typeof document !== 'undefined' && createPortal(
         <div
           style={{
             position: 'fixed',
-            left: `${hoveredDate.x}px`,
-            top: `${hoveredDate.y - 10}px`,
+            left: `${Math.min((typeof window !== 'undefined' ? window.innerWidth : 1200) - 130, Math.max(130, hoveredDate.x))}px`,
+            top: `${Math.max(10, hoveredDate.y - 10)}px`,
             transform: 'translate(-50%, -100%)',
             backgroundColor: 'var(--bg-surface-elevated)',
             borderColor: 'var(--border-subtle)',
             boxShadow: 'var(--shadow-dropdown)',
+            zIndex: 99999,
           }}
-          className="z-50 px-2.5 py-1.5 rounded-[10px] pointer-events-none whitespace-nowrap text-center animate-in fade-in duration-100 border"
+          className="px-2.5 py-1.5 rounded-[10px] pointer-events-none whitespace-nowrap text-center animate-in fade-in duration-100 border"
         >
           <div style={{ color: 'var(--text-primary)' }} className="text-[11.5px] font-semibold">
             {hoveredDate.dateStr}
@@ -167,8 +173,10 @@ export const MonthCalendarCard: React.FC = () => {
               {Math.round(hoveredDate.rate * 100)}%
             </span>)
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </Card>
   );
-};
+});
+MonthCalendarCard.displayName = 'MonthCalendarCard';

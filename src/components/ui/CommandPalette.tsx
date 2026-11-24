@@ -18,6 +18,15 @@ import {
   Headphones,
   Heart,
   Share2,
+  CalendarClock,
+  Camera,
+  Swords,
+  ShieldAlert,
+  ShieldCheck,
+  Skull,
+  Eye,
+  Brain,
+  Sparkles,
 } from 'lucide-react';
 import { useHabitStore } from '../../store/useHabitStore';
 import { formatLocalDate } from '../../lib/dateUtils';
@@ -36,7 +45,16 @@ export const CommandPalette: React.FC = () => {
   const setFocusStudioOpen = useHabitStore((s) => s.setFocusStudioOpen);
   const setWellnessModalOpen = useHabitStore((s) => s.setWellnessModalOpen);
   const setShareCardOpen = useHabitStore((s) => s.setShareCardOpen);
-
+  const setSynergyGraphModalOpen = useHabitStore((s) => s.setSynergyGraphModalOpen);
+  const setTimeCapsuleModalOpen = useHabitStore((s) => s.setTimeCapsuleModalOpen);
+  const setP2PDuelModalOpen = useHabitStore((s) => s.setP2PDuelModalOpen);
+  const setGhostDebriefOpen = useHabitStore((s) => s.setGhostDebriefOpen);
+  const setFocusShieldModalOpen = useHabitStore((s) => s.setFocusShieldModalOpen);
+  const setHardcoreLockdownModalOpen = useHabitStore((s) => s.setHardcoreLockdownModalOpen);
+  const setTitanBossArenaModalOpen = useHabitStore((s) => s.setTitanBossArenaModalOpen);
+  const setAiVisionSentinelModalOpen = useHabitStore((s) => s.setAiVisionSentinelModalOpen);
+  const setCircadianModalOpen = useHabitStore((s) => s.setCircadianModalOpen);
+  
   const [query, setQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'habits' | 'navigation' | 'actions'>('all');
   const [selectedIndex, setSelectedIndex] = useState(0);
@@ -104,6 +122,108 @@ export const CommandPalette: React.FC = () => {
       action: () => setShareCardOpen(true),
     },
     {
+      id: 'cmd-synergy-graph',
+      label: 'Habit Stacking & Synergy Graph',
+      description: 'Explore interactive force-directed habit chains and empirical momentum lift',
+      category: 'actions',
+      icon: Share2,
+      accentColor: '#6366f1',
+      action: () => setSynergyGraphModalOpen(true),
+    },
+    {
+      id: 'cmd-time-capsule',
+      label: 'Identity Time Capsule & Photo Proofs',
+      description: 'Review transformation slider and chronological milestone proof attachments',
+      category: 'actions',
+      icon: Camera,
+      accentColor: '#f59e0b',
+      action: () => setTimeCapsuleModalOpen(true),
+    },
+    {
+      id: 'cmd-p2p-duels',
+      label: 'P2P Habit Duels & Accountability Mesh',
+      description: 'Connect directly to peer via WebRTC for friendly habit challenges and wagers',
+      category: 'actions',
+      icon: Swords,
+      accentColor: '#f43f5e',
+      action: () => setP2PDuelModalOpen(true),
+    },
+    {
+      id: 'cmd-ghost-debrief',
+      label: 'The Ghost Protocol: AI Performance Debrief',
+      description: 'Run offline Stoic executive analysis and behavioral friction audit',
+      category: 'actions',
+      icon: ShieldAlert,
+      accentColor: '#ec4899',
+      shortcut: 'Ctrl+Shift+G',
+      action: () => setGhostDebriefOpen(true),
+    },
+    {
+      id: 'cmd-focus-shield',
+      label: 'System Focus Shield & App Blocker',
+      description: 'Configure active process blocking and distraction deflection rules',
+      category: 'actions',
+      icon: ShieldCheck,
+      accentColor: '#10b981',
+      action: () => setFocusShieldModalOpen(true),
+    },
+    {
+      id: 'cmd-hardcore-lockdown',
+      label: 'Hardcore Dopamine Vault Lockdown',
+      description: 'Strict kiosk mode with app termination and Stoic bailout verification',
+      category: 'actions',
+      icon: Skull,
+      accentColor: '#ef4444',
+      shortcut: 'Ctrl+Shift+L',
+      action: () => setHardcoreLockdownModalOpen(true),
+    },
+    {
+      id: 'cmd-titan-boss',
+      label: 'Titan Slayer Boss Arena',
+      description: 'RPG battle arena: strike procrastination entities with compound habit damage',
+      category: 'actions',
+      icon: Swords,
+      accentColor: '#c084fc',
+      shortcut: 'Ctrl+Shift+B',
+      action: () => setTitanBossArenaModalOpen(true),
+    },
+    {
+      id: 'cmd-vision-sentinel',
+      label: 'Local AI Vision Sentinel',
+      description: '100% offline computer vision deep work verification & cryptographic proof-of-work',
+      category: 'actions',
+      icon: Eye,
+      accentColor: '#34d399',
+      shortcut: 'Ctrl+Shift+V',
+      action: () => setAiVisionSentinelModalOpen(true),
+    },
+    {
+      id: 'cmd-protocols-deck',
+      label: 'Executive Protocols Command Deck',
+      description: 'In-page tactical command suite: AI debrief, circadian bioclock, RPG arena & shield',
+      category: 'navigation',
+      icon: Sparkles,
+      accentColor: '#a855f7',
+      shortcut: 'Ctrl+Shift+P',
+      action: () => {
+        setTab('dashboard');
+        setTimeout(() => {
+          const el = document.getElementById('protocols-deck');
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+      },
+    },
+    {
+      id: 'cmd-circadian-forecast',
+      label: 'Neural Circadian Forecast & Burnout Predictor',
+      description: 'Bioclock alignment, 24h energy waveform & atomic habit synergies',
+      category: 'actions',
+      icon: Brain,
+      accentColor: '#818cf8',
+      shortcut: 'Ctrl+Shift+C',
+      action: () => setCircadianModalOpen(true),
+    },
+    {
       id: 'cmd-jump-today',
       label: 'Jump to Today',
       description: 'Reset date view to current day',
@@ -132,6 +252,16 @@ export const CommandPalette: React.FC = () => {
       accentColor: '#6366f1',
       shortcut: 'Ctrl+2',
       action: () => setTab('habits'),
+    },
+    {
+      id: 'cmd-nav-timetable',
+      label: 'Studio Timetable & Schedule',
+      description: 'Daily 24h schedule, countdown & time blocks',
+      category: 'navigation',
+      icon: CalendarClock,
+      accentColor: '#818cf8',
+      shortcut: 'Ctrl+3',
+      action: () => setTab('timetable'),
     },
     {
       id: 'cmd-nav-analytics',

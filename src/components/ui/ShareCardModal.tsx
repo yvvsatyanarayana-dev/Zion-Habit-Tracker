@@ -15,12 +15,12 @@ export const ShareCardModal: React.FC = () => {
 const ShareCardModalInner: React.FC = () => {
   const setShareCardOpen = useHabitStore((s) => s.setShareCardOpen);
   const currentUser = useHabitStore((s) => s.currentUser);
-  const habits = useHabitStore((s) => s.habits || []);
-  const checkins = useHabitStore((s) => s.checkins || {});
-  const allCheckinsList = useHabitStore((s) => s.allCheckinsList || []);
-  const focusSessions = useHabitStore((s) => s.focusSessions || []);
-  const wellnessLogs = useHabitStore((s) => s.wellnessLogs || {});
-  const currentDate = useHabitStore((s) => s.currentDate || new Date());
+  const habits = useHabitStore((s) => s.habits);
+  const checkins = useHabitStore((s) => s.checkins);
+  const allCheckinsList = useHabitStore((s) => s.allCheckinsList);
+  const focusSessions = useHabitStore((s) => s.focusSessions);
+  const wellnessLogs = useHabitStore((s) => s.wellnessLogs);
+  const currentDate = useHabitStore((s) => s.currentDate);
   const selectedYear = useHabitStore((s) => s.selectedYear);
   const selectedMonth = useHabitStore((s) => s.selectedMonth);
   const streakThreshold = useHabitStore((s) => s.settings?.streak_threshold ?? 50);

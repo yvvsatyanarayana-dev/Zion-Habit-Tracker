@@ -2,11 +2,13 @@ import React, { useState } from 'react';
 import { useHabitStore } from '../../store/useHabitStore';
 import type { RoutineStack, RoutineStep } from '../../lib/types';
 import { X, Plus, Trash2, Play, Edit3, Check, Layers, Clock } from 'lucide-react';
+import { HabitIconView, HABIT_ICONS } from '../../lib/habitIcons';
 
 const RoutineManagerModalContent: React.FC = () => {
   const setOpen = useHabitStore((s) => s.setRoutineManagerOpen);
-  const routines = useHabitStore((s) => s.routines || []);
-  const habits = useHabitStore((s) => (s.habits || []).filter((h) => !h.archived));
+  const routines = useHabitStore((s) => s.routines);
+  const allHabits = useHabitStore((s) => s.habits);
+  const habits = React.useMemo(() => (allHabits || []).filter((h) => !h.archived), [allHabits]);
   const saveRoutine = useHabitStore((s) => s.saveRoutine);
   const deleteRoutine = useHabitStore((s) => s.deleteRoutine);
   const startRoutineRunner = useHabitStore((s) => s.startRoutineRunner);
@@ -14,7 +16,7 @@ const RoutineManagerModalContent: React.FC = () => {
   const [editingRoutine, setEditingRoutine] = useState<RoutineStack | null>(null);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [emoji, setEmoji] = useState('⚡');
+  const [emoji, setEmoji] = useState('zap');
   const [color, setColor] = useState('#3b82f6');
   const [timeOfDay, setTimeOfDay] = useState<'morning' | 'afternoon' | 'evening' | 'anytime'>('morning');
   const [steps, setSteps] = useState<RoutineStep[]>([]);
@@ -24,7 +26,7 @@ const RoutineManagerModalContent: React.FC = () => {
       setEditingRoutine(routine);
       setTitle(routine.title);
       setDescription(routine.description || '');
-      setEmoji(routine.emoji || '⚡');
+      setEmoji(routine.emoji || 'zap');
       setColor(routine.color || '#3b82f6');
       setTimeOfDay(routine.time_of_day || 'morning');
       setSteps([...routine.steps]);
@@ -33,7 +35,7 @@ const RoutineManagerModalContent: React.FC = () => {
         id: `routine-${Date.now()}`,
         title: '',
         description: '',
-        emoji: '⚡',
+        emoji: 'zap',
         color: '#3b82f6',
         time_of_day: 'morning',
         steps: [],
@@ -41,7 +43,7 @@ const RoutineManagerModalContent: React.FC = () => {
       });
       setTitle('');
       setDescription('');
-      setEmoji('⚡');
+      setEmoji('zap');
       setColor('#3b82f6');
       setTimeOfDay('morning');
       setSteps([
@@ -139,20 +141,15 @@ const RoutineManagerModalContent: React.FC = () => {
                 </button>
               </div>
 
-              {/* Title & Emoji */}
+              {/* Title & Icon */}
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
                 <div className="sm:col-span-1">
                   <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted, #a1a1aa)' }}>
-                    Emoji
+                    Icon
                   </label>
-                  <input
-                    type="text"
-                    value={emoji}
-                    onChange={(e) => setEmoji(e.target.value)}
-                    maxLength={3}
-                    className="w-full text-center text-xl py-2 rounded-xl border bg-white/5 text-white outline-none focus:border-blue-500"
-                    style={{ borderColor: 'var(--border-subtle, rgba(255,255,255,0.1))' }}
-                  />
+                  <div className="flex items-center justify-center p-2 rounded-xl border bg-white/5 h-[42px]" style={{ borderColor: 'var(--border-subtle, rgba(255,255,255,0.1))' }}>
+                    <HabitIconView iconId={emoji || 'zap'} size={20} color={color} />
+                  </div>
                 </div>
                 <div className="sm:col-span-3">
                   <label className="text-xs font-medium mb-1 block" style={{ color: 'var(--text-muted, #a1a1aa)' }}>
@@ -163,9 +160,36 @@ const RoutineManagerModalContent: React.FC = () => {
                     placeholder="e.g. Morning Ignition Flow"
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border bg-white/5 text-white outline-none focus:border-blue-500 text-sm"
+                    className="w-full px-3 py-2 rounded-xl border bg-white/5 text-white outline-none focus:border-blue-500 text-sm h-[42px]"
                     style={{ borderColor: 'var(--border-subtle, rgba(255,255,255,0.1))' }}
                   />
+                </div>
+              </div>
+
+              {/* Icon selector pills */}
+              <div>
+                <label className="text-xs font-medium mb-1.5 block" style={{ color: 'var(--text-muted, #a1a1aa)' }}>
+                  Choose Flow Icon
+                </label>
+                <div className="flex items-center gap-1.5 flex-wrap p-2 rounded-xl border bg-white/[0.02]" style={{ borderColor: 'var(--border-subtle, rgba(255,255,255,0.06))' }}>
+                  {['zap', 'sun', 'moon', 'flame', 'book', 'coffee', 'target', 'activity', 'sparkles', 'brain', 'compass', 'feather'].map((iconKey) => {
+                    const isSelected = emoji === iconKey;
+                    return (
+                      <button
+                        key={iconKey}
+                        type="button"
+                        onClick={() => setEmoji(iconKey)}
+                        className={`p-2 rounded-lg border transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-blue-500/20 border-blue-500/60 text-blue-400'
+                            : 'border-transparent text-zinc-400 hover:text-white hover:bg-white/5'
+                        }`}
+                        title={iconKey}
+                      >
+                        <HabitIconView iconId={iconKey} size={16} />
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -328,9 +352,9 @@ const RoutineManagerModalContent: React.FC = () => {
                       style={{ borderColor: 'var(--border-subtle, rgba(255,255,255,0.1))' }}
                     >
                       <div className="flex items-center gap-3.5 min-w-0">
-                        <span className="text-3xl p-2.5 rounded-2xl bg-white/5 border border-white/10 shrink-0">
-                          {routine.emoji || '⚡'}
-                        </span>
+                        <div className="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+                          <HabitIconView iconId={routine.emoji || 'zap'} size={22} color={routine.color || '#3b82f6'} />
+                        </div>
                         <div className="min-w-0">
                           <h4 className="text-base font-bold truncate tracking-tight">{routine.title}</h4>
                           <p className="text-xs truncate max-w-md" style={{ color: 'var(--text-secondary, #d4d4d8)' }}>

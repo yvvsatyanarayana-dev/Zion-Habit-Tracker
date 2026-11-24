@@ -24,10 +24,10 @@ export function useKeyboardShortcuts() {
         return;
       }
 
-      // Ctrl+1 through Ctrl+7 tab navigation
-      if ((e.ctrlKey || e.metaKey) && ['1', '2', '3', '4', '5', '6', '7'].includes(e.key)) {
+      // Ctrl+1 through Ctrl+8 tab navigation
+      if ((e.ctrlKey || e.metaKey) && ['1', '2', '3', '4', '5', '6', '7', '8'].includes(e.key)) {
         e.preventDefault();
-        const tabList = ['dashboard', 'habits', 'analytics', 'streaks', 'profile', 'guide', 'settings'] as const;
+        const tabList = ['dashboard', 'habits', 'timetable', 'analytics', 'streaks', 'profile', 'guide', 'settings'] as const;
         const idx = parseInt(e.key, 10) - 1;
         if (tabList[idx]) {
           setTab(tabList[idx]);
@@ -52,6 +52,14 @@ export function useKeyboardShortcuts() {
           closeHabitModal();
           return;
         }
+        if (useHabitStore.getState().timetableImportModalOpen) {
+          useHabitStore.getState().setTimetableImportModalOpen(false);
+          return;
+        }
+        if (useHabitStore.getState().timetableBlockModalOpen) {
+          useHabitStore.getState().setTimetableBlockModalOpen(false);
+          return;
+        }
         if (useHabitStore.getState().weeklyReviewOpen) {
           useHabitStore.getState().setWeeklyReviewOpen(false);
           return;
@@ -60,6 +68,68 @@ export function useKeyboardShortcuts() {
           useHabitStore.getState().closeReflectionModal();
           return;
         }
+        if (useHabitStore.getState().ghostDebriefOpen) {
+          useHabitStore.getState().setGhostDebriefOpen(false);
+          return;
+        }
+        if (useHabitStore.getState().hardcoreLockdownModalOpen) {
+          useHabitStore.getState().setHardcoreLockdownModalOpen(false);
+          return;
+        }
+        if (useHabitStore.getState().titanBossArenaModalOpen) {
+          useHabitStore.getState().setTitanBossArenaModalOpen(false);
+          return;
+        }
+        if (useHabitStore.getState().aiVisionSentinelModalOpen) {
+          useHabitStore.getState().setAiVisionSentinelModalOpen(false);
+          return;
+        }
+      }
+
+      // Ctrl+Shift+G: Run The Ghost Protocol Debrief
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'g') {
+        e.preventDefault();
+        useHabitStore.getState().setGhostDebriefOpen(true);
+        return;
+      }
+
+      // Ctrl+Shift+L: Hardcore Dopamine Vault Lockdown
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        useHabitStore.getState().setHardcoreLockdownModalOpen(true);
+        return;
+      }
+
+      // Ctrl+Shift+B: Titan Boss Arena
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        useHabitStore.getState().setTitanBossArenaModalOpen(true);
+        return;
+      }
+
+      // Ctrl+Shift+V: Local AI Vision Sentinel
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+        useHabitStore.getState().setAiVisionSentinelModalOpen(true);
+        return;
+      }
+
+      // Ctrl+Shift+P: Jump to Executive Protocols Deck on Dashboard
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
+        useHabitStore.getState().setTab('dashboard');
+        setTimeout(() => {
+          const el = document.getElementById('protocols-deck');
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 50);
+        return;
+      }
+
+      // Ctrl+Shift+C: Neural Circadian Forecast & Burnout Predictor
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        useHabitStore.getState().setCircadianModalOpen(true);
+        return;
       }
 
       if (isInput) return;

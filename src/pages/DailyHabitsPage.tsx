@@ -10,10 +10,11 @@ import { WellnessLogEntry } from '../components/ui/WellnessLogEntry';
 import { Plus, GitBranch, RotateCcw, Heart, Zap, Sparkles, Layers } from 'lucide-react';
 import { clsx } from 'clsx';
 import { formatLocalDate } from '../lib/dateUtils';
+import { sound } from '../lib/audio';
 
 export const DailyHabitsPage: React.FC = () => {
-  const habits = useHabitStore((s) => s.habits || []);
-  const activeHabits = habits.filter((h) => !h?.archived);
+  const habits = useHabitStore((s) => s.habits);
+  const activeHabits = React.useMemo(() => habits.filter((h) => !h?.archived), [habits]);
   const openHabitModal = useHabitStore((s) => s.openHabitModal);
   const currentDate = useHabitStore((s) => s.currentDate);
   const habitDependencies = useHabitStore((s) => s.habitDependencies);
@@ -28,7 +29,7 @@ export const DailyHabitsPage: React.FC = () => {
   const todaysWellness = wellnessLogs[dateStr];
   const hasDependencies = habitDependencies.length > 0;
 
-  const chainStats = (() => {
+  const chainStats = React.useMemo(() => {
     let prereqCount = 0;
     let antiCount = 0;
     for (const dep of habitDependencies) {
@@ -36,7 +37,7 @@ export const DailyHabitsPage: React.FC = () => {
       else antiCount++;
     }
     return { prereqCount, antiCount };
-  })();
+  }, [habitDependencies]);
 
   return (
     <div className="daily-habits-page w-full max-w-[1700px] mx-auto h-full flex flex-col min-h-0 space-y-2.5 animate-in fade-in duration-200">

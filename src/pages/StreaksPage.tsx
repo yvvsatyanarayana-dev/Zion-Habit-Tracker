@@ -9,7 +9,7 @@ import { useHabitStore } from '../store/useHabitStore';
 import { Flame } from 'lucide-react';
 
 export const StreaksPage: React.FC = () => {
-  const habits = useHabitStore((s) => s.habits || []);
+  const habits = useHabitStore((s) => s.habits);
   const activeHabits = habits.filter((h) => !h?.archived);
 
   return (

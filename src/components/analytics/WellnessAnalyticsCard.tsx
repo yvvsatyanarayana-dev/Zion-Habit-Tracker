@@ -6,10 +6,10 @@ import { formatLocalDate } from '../../lib/dateUtils';
 import { isHabitScheduledOnDay } from '../../lib/statsUtils';
 
 export const WellnessAnalyticsCard: React.FC = () => {
-  const habits = useHabitStore((s) => s.habits || []);
-  const checkins = useHabitStore((s) => s.checkins || {});
-  const wellnessLogs = useHabitStore((s) => s.wellnessLogs || {});
-  const currentDate = useHabitStore((s) => s.currentDate || new Date());
+  const habits = useHabitStore((s) => s.habits);
+  const checkins = useHabitStore((s) => s.checkins);
+  const wellnessLogs = useHabitStore((s) => s.wellnessLogs);
+  const currentDate = useHabitStore((s) => s.currentDate);
   const setWellnessModalOpen = useHabitStore((s) => s.setWellnessModalOpen);
 
   const activeHabits = useMemo(() => habits.filter((h) => !h?.archived), [habits]);

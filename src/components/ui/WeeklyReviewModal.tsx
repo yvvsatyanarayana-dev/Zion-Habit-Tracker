@@ -3,7 +3,8 @@ import { useHabitStore } from '../../store/useHabitStore';
 import { startOfWeek, endOfWeek, eachDayOfInterval, format } from 'date-fns';
 import { formatLocalDate } from '../../lib/dateUtils';
 import { isHabitScheduledOnDay } from '../../lib/statsUtils';
-import { Award, X, Sparkles, Trophy, TrendingUp, CheckCircle2, AlertCircle, Smile, Zap, Moon } from 'lucide-react';
+import { Award, X, Sparkles, Trophy, TrendingUp, CheckCircle2, AlertCircle, Smile, Zap, Moon, Meh, Frown } from 'lucide-react';
+import { HabitIconView } from '../../lib/habitIcons';
 
 export const WeeklyReviewModal: React.FC = () => {
   const weeklyReviewOpen = useHabitStore((s) => s.weeklyReviewOpen);
@@ -190,7 +191,7 @@ export const WeeklyReviewModal: React.FC = () => {
                   <span>Star Performer</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-base">{bestHabit.habit.emoji || '⚡'}</span>
+                  <HabitIconView iconId={bestHabit.habit.emoji} color={bestHabit.habit.color} size={16} />
                   <span className="text-xs font-bold text-[var(--text-primary)] truncate">
                     {bestHabit.habit.name}
                   </span>
@@ -216,7 +217,7 @@ export const WeeklyReviewModal: React.FC = () => {
                   <span>Growth Focus</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-base">{lowestHabit.habit.emoji || '🌱'}</span>
+                  <HabitIconView iconId={lowestHabit.habit.emoji} color={lowestHabit.habit.color} size={16} />
                   <span className="text-xs font-bold text-[var(--text-primary)] truncate">
                     {lowestHabit.habit.name}
                   </span>
@@ -244,19 +245,27 @@ export const WeeklyReviewModal: React.FC = () => {
             <div className="grid grid-cols-4 gap-2 text-center">
               <div className="p-2 rounded bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)]">
                 <div className="text-xs font-bold text-amber-400 font-num">{moodsCount.energized}</div>
-                <div className="text-[10px] text-[var(--text-muted)]">⚡ Energized</div>
+                <div className="text-[10px] text-[var(--text-muted)] flex items-center justify-center gap-1 mt-0.5">
+                  <Zap size={11} className="text-amber-400" /> Energized
+                </div>
               </div>
               <div className="p-2 rounded bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)]">
                 <div className="text-xs font-bold text-emerald-400 font-num">{moodsCount.good}</div>
-                <div className="text-[10px] text-[var(--text-muted)]">😊 Good</div>
+                <div className="text-[10px] text-[var(--text-muted)] flex items-center justify-center gap-1 mt-0.5">
+                  <Smile size={11} className="text-emerald-400" /> Good
+                </div>
               </div>
               <div className="p-2 rounded bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)]">
                 <div className="text-xs font-bold text-indigo-400 font-num">{moodsCount.neutral}</div>
-                <div className="text-[10px] text-[var(--text-muted)]">😐 Neutral</div>
+                <div className="text-[10px] text-[var(--text-muted)] flex items-center justify-center gap-1 mt-0.5">
+                  <Meh size={11} className="text-indigo-400" /> Neutral
+                </div>
               </div>
               <div className="p-2 rounded bg-[var(--bg-surface-elevated)] border border-[var(--border-subtle)]">
                 <div className="text-xs font-bold text-slate-400 font-num">{moodsCount.tired}</div>
-                <div className="text-[10px] text-[var(--text-muted)]">🥱 Tired</div>
+                <div className="text-[10px] text-[var(--text-muted)] flex items-center justify-center gap-1 mt-0.5">
+                  <Frown size={11} className="text-slate-400" /> Tired
+                </div>
               </div>
             </div>
           </div>

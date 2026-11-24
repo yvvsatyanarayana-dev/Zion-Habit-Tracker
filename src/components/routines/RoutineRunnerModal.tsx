@@ -6,6 +6,7 @@ import { sendOsNotification } from '../../lib/reminders';
 import { X, Play, Pause, RotateCcw, Plus, CheckCircle2, ChevronRight, ChevronLeft, Sparkles, Flame, Clock } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import type { RoutineStack } from '../../lib/types';
+import { HabitIconView } from '../../lib/habitIcons';
 
 interface RunnerProps {
   activeRoutine: RoutineStack;
@@ -13,10 +14,10 @@ interface RunnerProps {
 
 const RoutineRunnerModalContent: React.FC<RunnerProps> = ({ activeRoutine }) => {
   const closeRoutineRunner = useHabitStore((s) => s.closeRoutineRunner);
-  const habits = useHabitStore((s) => s.habits || []);
-  const checkins = useHabitStore((s) => s.checkins || {});
+  const habits = useHabitStore((s) => s.habits);
+  const checkins = useHabitStore((s) => s.checkins);
   const toggleCheckin = useHabitStore((s) => s.toggleCheckin);
-  const currentDate = useHabitStore((s) => s.currentDate || new Date());
+  const currentDate = useHabitStore((s) => s.currentDate);
 
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [secondsRemaining, setSecondsRemaining] = useState(0);
@@ -128,9 +129,9 @@ const RoutineRunnerModalContent: React.FC<RunnerProps> = ({ activeRoutine }) => 
         {/* Header bar */}
         <div className="p-4 sm:p-5 border-b flex items-center justify-between" style={{ borderColor: 'var(--border-subtle, rgba(255,255,255,0.1))' }}>
           <div className="flex items-center gap-3 min-w-0">
-            <span className="text-2xl sm:text-3xl p-2 rounded-2xl bg-white/5 border border-white/10 shrink-0">
-              {activeRoutine.emoji || '⚡'}
-            </span>
+            <div className="w-11 h-11 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center shrink-0">
+              <HabitIconView iconId={activeRoutine.emoji || 'zap'} size={22} color={activeRoutine.color || 'var(--accent-primary)'} />
+            </div>
             <div className="min-w-0">
               <h2 className="text-base sm:text-lg font-bold truncate tracking-tight">{activeRoutine.title}</h2>
               <p className="text-xs truncate" style={{ color: 'var(--text-muted, #a1a1aa)' }}>

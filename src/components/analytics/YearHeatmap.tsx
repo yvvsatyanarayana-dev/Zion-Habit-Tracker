@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Card } from '../ui/Card';
 import { useHabitStore } from '../../store/useHabitStore';
 import { formatLocalDate } from '../../lib/dateUtils';
@@ -18,6 +19,19 @@ export const YearHeatmap: React.FC = () => {
     x: number;
     y: number;
   } | null>(null);
+
+  const scrollRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const el = scrollRef.current;
+    if (el) {
+      el.scrollLeft = el.scrollWidth;
+      const t = setTimeout(() => {
+        if (el) el.scrollLeft = el.scrollWidth;
+      }, 100);
+      return () => clearTimeout(t);
+    }
+  }, []);
 
   const activeHabits = habits.filter((h) => !h.archived);
 
@@ -103,7 +117,7 @@ export const YearHeatmap: React.FC = () => {
         </div>
       </div>
 
-      <div className="overflow-x-auto pb-2">
+      <div ref={scrollRef} className="overflow-x-auto pb-2 custom-scrollbar">
         <div className="flex gap-[3px] min-w-max">
           {columns.map((col, colIdx) => (
             <div key={colIdx} className="flex flex-col gap-[3px]">
@@ -127,9 +141,11 @@ export const YearHeatmap: React.FC = () => {
                       });
                     }}
                     onMouseLeave={() => setHoveredCell(null)}
-                    className={`w-[13px] h-[13px] rounded-[3px] transition-transform cursor-pointer hover:scale-125 ${
-                      isToday ? 'ring-1.5 ring-[var(--accent-primary)]' : ''
-                    } ${day.isFuture ? 'opacity-30' : ''}`}
+                    className={`w-[13px] h-[13px] rounded-[3px] transition-all cursor-pointer ${
+                      day.isFuture
+                        ? 'opacity-30 cursor-default'
+                        : 'hover:brightness-135 ring-inset hover:ring-1 hover:ring-white/90 hover:z-20'
+                    } ${isToday ? 'ring-1.5 ring-inset ring-[var(--accent-primary)]' : ''}`}
                   />
                 );
               })}
@@ -138,30 +154,50 @@ export const YearHeatmap: React.FC = () => {
         </div>
       </div>
 
-      {hoveredCell && (
-        <div
-          style={{
-            position: 'fixed',
-            left: `${hoveredCell.x}px`,
-            top: `${hoveredCell.y - 8}px`,
-            transform: 'translate(-50%, -100%)',
-            backgroundColor: 'var(--bg-surface-elevated)',
-            borderColor: 'var(--border-subtle)',
-            boxShadow: 'var(--shadow-dropdown)',
-          }}
-          className="z-50 border px-3 py-1.5 rounded-[12px] pointer-events-none whitespace-nowrap text-center animate-in fade-in duration-100"
-        >
-          <div style={{ color: 'var(--text-primary)' }} className="text-[12px] font-semibold">
-            {hoveredCell.dateStr}
-          </div>
-          <div style={{ color: 'var(--text-secondary)' }} className="text-[11px] font-num mt-0.5">
-            {hoveredCell.completed} of {hoveredCell.total} habits (
-            <span style={{ color: 'var(--accent-primary)' }} className="font-bold">
-              {hoveredCell.pct}%
-            </span>)
-          </div>
-        </div>
-      )}
+      {hoveredCell && typeof document !== 'undefined' && (() => {
+        const screenW = typeof window !== 'undefined' ? window.innerWidth : 1200;
+        const isNearRight = hoveredCell.x > screenW - 190;
+        const isNearLeft = hoveredCell.x < 190;
+        const tooltipLeft = isNearRight
+          ? Math.min(screenW - 16, hoveredCell.x)
+          : isNearLeft
+          ? Math.max(16, hoveredCell.x)
+          : hoveredCell.x;
+        const tooltipTransform = isNearRight
+          ? 'translate(-100%, -100%)'
+          : isNearLeft
+          ? 'translate(0, -100%)'
+          : 'translate(-50%, -100%)';
+
+        return createPortal(
+          <div
+            style={{
+              position: 'fixed',
+              left: `${tooltipLeft}px`,
+              top: `${Math.max(10, hoveredCell.y - 8)}px`,
+              transform: tooltipTransform,
+              maxWidth: 'calc(100vw - 32px)',
+              backgroundColor: 'var(--bg-surface-elevated)',
+              borderColor: 'var(--border-subtle)',
+              boxShadow: 'var(--shadow-dropdown)',
+              zIndex: 99999,
+              pointerEvents: 'none',
+            }}
+            className="border px-3 py-1.5 rounded-[12px] whitespace-nowrap text-center animate-in fade-in duration-100 backdrop-blur-xl"
+          >
+            <div style={{ color: 'var(--text-primary)' }} className="text-[12px] font-semibold">
+              {hoveredCell.dateStr}
+            </div>
+            <div style={{ color: 'var(--text-secondary)' }} className="text-[11px] font-num mt-0.5">
+              {hoveredCell.completed} of {hoveredCell.total} habits (
+              <span style={{ color: 'var(--accent-primary)' }} className="font-bold">
+                {hoveredCell.pct}%
+              </span>)
+            </div>
+          </div>,
+          document.body
+        );
+      })()}
     </Card>
   );
 };

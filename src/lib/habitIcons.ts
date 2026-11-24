@@ -76,8 +76,42 @@ const iconMap = new Map<string, LucideIcon>(
   HABIT_ICONS.map((item) => [item.id, item.icon])
 );
 
+// Map legacy emoji characters to crisp Lucide icons
+const legacyEmojiMap: Record<string, LucideIcon> = {
+  '⚡': Zap,
+  '🌅': Sun,
+  '🌙': Moon,
+  '📚': BookOpen,
+  '📖': BookOpen,
+  '🏃': Footprints,
+  '🏃‍♂️': Footprints,
+  '🏃‍♀️': Footprints,
+  '🧘': Sparkles,
+  '🧘‍♂️': Sparkles,
+  '🧘‍♀️': Sparkles,
+  '💧': Droplets,
+  '☕': Coffee,
+  '🎯': Target,
+  '🍎': Utensils,
+  '🍽': Utensils,
+  '💪': Dumbbell,
+  '💻': Laptop,
+  '📝': Feather,
+  '🌱': Sparkles,
+  '🔥': Flame,
+  '❤️': Heart,
+  '⭐': Star,
+  '✨': Sparkles,
+  '🎨': Camera,
+  '🧠': Brain,
+  '🚴': Bike,
+  '🚶': Footprints,
+  '😴': Bed,
+};
+
 export function getHabitIcon(iconId?: string): LucideIcon {
   if (!iconId) return Target;
+  if (legacyEmojiMap[iconId]) return legacyEmojiMap[iconId];
   return iconMap.get(iconId.toLowerCase()) || Target;
 }
 

@@ -69,4 +69,33 @@ describe('Streak Calculations', () => {
     expect(shieldedStats.currentStreak).toBe(3);
     expect(shieldedStats.longestStreak).toBe(3);
   });
+
+  it('correctly calculates 2-day streak when completing 2/5 on day 1 and 3/5 on day 2 with 50% threshold', () => {
+    const habits: Habit[] = Array.from({ length: 5 }, (_, i) => ({
+      id: `h${i + 1}`,
+      name: `Habit ${i + 1}`,
+      emoji: '🎯',
+      color: '#6366f1',
+      monthly_goal: 30,
+      schedule_days: [0, 1, 2, 3, 4, 5, 6],
+      sort_order: i,
+      archived: false,
+      created_at: '2026-10-01T00:00:00Z',
+    }));
+
+    // Day 1 (Friday Oct 6): 2/5 completed (40%)
+    // Day 2 (Saturday Oct 7): 3/5 completed (60%)
+    const checkins: Checkin[] = [
+      { id: 'c1', habit_id: 'h1', date: '2026-10-06', completed: true, note: '', updated_at: '' },
+      { id: 'c2', habit_id: 'h2', date: '2026-10-06', completed: true, note: '', updated_at: '' },
+      { id: 'c3', habit_id: 'h1', date: '2026-10-07', completed: true, note: '', updated_at: '' },
+      { id: 'c4', habit_id: 'h2', date: '2026-10-07', completed: true, note: '', updated_at: '' },
+      { id: 'c5', habit_id: 'h3', date: '2026-10-07', completed: true, note: '', updated_at: '' },
+    ];
+
+    const stats = computeStreakStats(habits, checkins, 50, dummyDate);
+    // Streak should be 2 days, not broken down to 1 day!
+    expect(stats.currentStreak).toBe(2);
+    expect(stats.longestStreak).toBe(2);
+  });
 });

@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useHabitStore } from '../../store/useHabitStore';
 import { format } from 'date-fns';
-import { Sparkles, X, Check, Smile, Zap, Meh, Moon, StickyNote, Hash } from 'lucide-react';
+import { Sparkles, X, Check, Smile, Zap, Meh, Moon, StickyNote, Hash, Camera } from 'lucide-react';
 import type { CheckinMood } from '../../lib/types';
 
 const MOODS: { id: CheckinMood; label: string; icon: any; color: string; bg: string }[] = [
@@ -18,10 +18,14 @@ export const ReflectionModal: React.FC = () => {
   const checkins = useHabitStore((s) => s.checkins);
   const updateCheckinDetails = useHabitStore((s) => s.updateCheckinDetails);
   const updateNumericValue = useHabitStore((s) => s.updateNumericValue);
+  const addHabitProof = useHabitStore((s) => s.addHabitProof);
+  const awardXp = useHabitStore((s) => s.awardXp);
 
   const [note, setNote] = useState('');
   const [selectedMood, setSelectedMood] = useState<CheckinMood | undefined>(undefined);
   const [numericVal, setNumericVal] = useState<number>(0);
+  const [proofImage, setProofImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const habit = habits.find((h) => h.id === reflectionModal?.habitId);
   const checkinKey = reflectionModal ? `${reflectionModal.habitId}_${reflectionModal.dateStr}` : '';
@@ -52,6 +56,16 @@ export const ReflectionModal: React.FC = () => {
       note: note.trim(),
       mood: selectedMood,
     });
+
+    if (proofImage) {
+      await addHabitProof({
+        habit_id: habit.id,
+        date: reflectionModal.dateStr,
+        image_data: proofImage,
+        caption: note.trim(),
+      });
+      awardXp(75, 'discipline', `Proof Journal: ${habit.name}`);
+    }
 
     closeReflectionModal();
   };
@@ -184,6 +198,46 @@ export const ReflectionModal: React.FC = () => {
               }}
               className="w-full p-3 rounded-lg border text-xs outline-none focus:border-[var(--accent-primary)] transition-colors resize-none placeholder-[var(--text-muted)] leading-relaxed"
             />
+          </div>
+
+          {/* Photo Proof for Time Capsule */}
+          <div className="space-y-1.5">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => {
+                  if (typeof reader.result === 'string') setProofImage(reader.result);
+                };
+                reader.readAsDataURL(file);
+              }}
+              className="hidden"
+            />
+            {proofImage ? (
+              <div className="relative rounded-lg overflow-hidden border border-[var(--border-subtle)] max-h-36 bg-black/40 flex items-center justify-center">
+                <img src={proofImage} alt="Proof" className="max-h-36 w-auto object-contain" />
+                <button
+                  type="button"
+                  onClick={() => setProofImage(null)}
+                  className="absolute top-1.5 right-1.5 p-1 rounded bg-black/70 text-rose-400 hover:text-rose-300 text-xs cursor-pointer"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full py-2 px-3 rounded-lg border border-dashed border-[var(--border-subtle)] bg-[var(--bg-canvas)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-[var(--accent-primary)] text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Camera size={13} className="text-amber-400" />
+                <span>Attach Photo Proof to Time Capsule (+75 XP)</span>
+              </button>
+            )}
           </div>
         </div>
 

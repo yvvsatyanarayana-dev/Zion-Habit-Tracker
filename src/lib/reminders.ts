@@ -123,19 +123,40 @@ export async function dismissAndroidReminder(notificationId: number): Promise<vo
   await LocalNotifications.removeDeliveredNotificationsById({ ids: [notificationId] });
 }
 
+export interface OsNotificationOptions {
+  silent?: boolean;
+  urgency?: 'normal' | 'critical' | 'low';
+  tag?: string;
+  icon?: string;
+  sound?: boolean;
+}
+
 /**
- * Fires a real OS-level notification across Windows (Electron), Android (Capacitor),
- * and standard Web browsers.
+ * Fires a high-fidelity OS-level notification across Windows (Electron), Android (Capacitor),
+ * and standard Web browsers/PWA with window focus handling and sound triggers.
  */
-export async function sendOsNotification(title: string, body: string): Promise<void> {
+export async function sendOsNotification(
+  title: string,
+  body: string,
+  options?: OsNotificationOptions
+): Promise<boolean> {
   try {
-    if (typeof window !== 'undefined' && (window as unknown as { api?: { notify?: (t: string, b: string) => void } }).api?.notify) {
-      (window as unknown as { api: { notify: (t: string, b: string) => void } }).api.notify(title, body);
-      return;
+    // 1. Electron Desktop OS Notification
+    if (typeof window !== 'undefined' && (window as any).api?.notify) {
+      const res = await (window as any).api.notify(title, body, {
+        silent: options?.silent,
+        urgency: options?.urgency,
+        sound: options?.sound,
+      });
+      return Boolean(res);
     }
 
+    // 2. Android Capacitor Local Notification
     if (isAndroidApp()) {
-      const perm = await LocalNotifications.checkPermissions();
+      let perm = await LocalNotifications.checkPermissions();
+      if (perm.display !== 'granted') {
+        perm = await LocalNotifications.requestPermissions();
+      }
       if (perm.display === 'granted') {
         await LocalNotifications.createChannel({
           id: DAILY_REMINDER_CHANNEL_ID,
@@ -147,21 +168,44 @@ export async function sendOsNotification(title: string, body: string): Promise<v
           notifications: [
             {
               id: Math.floor(Date.now() % 1000000) + 100,
-              title,
-              body,
+              title: title || 'Zion Habit Tracker',
+              body: body || '',
               channelId: DAILY_REMINDER_CHANNEL_ID,
-              schedule: { at: new Date(Date.now() + 250) },
+              schedule: { at: new Date(Date.now() + 200) },
             },
           ],
         });
+        return true;
       }
-      return;
+      return false;
     }
 
-    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
-      new Notification(title, { body });
+    // 3. Modern Web Browser / PWA Notifications API
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      let permission = Notification.permission;
+      if (permission === 'default') {
+        permission = await Notification.requestPermission();
+      }
+
+      if (permission === 'granted') {
+        const notif = new Notification(title || 'Zion Habit Tracker', {
+          body,
+          icon: options?.icon || '/favicon.ico',
+          tag: options?.tag || 'zion-notification',
+          silent: options?.silent ?? false,
+        });
+
+        notif.onclick = () => {
+          window.focus();
+          notif.close();
+        };
+        return true;
+      }
     }
+
+    return false;
   } catch (err) {
-    console.warn('OS notification failed:', err);
+    console.warn('[Notification] OS notification failed:', err);
+    return false;
   }
 }

@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Card } from '../ui/Card';
 import { useHabitStore } from '../../store/useHabitStore';
 import { computeSmartInsights } from '../../lib/correlationUtils';
-import { Sparkles, TrendingUp, HeartPulse, AlertTriangle, ArrowRight, Zap, Trophy, ShieldAlert } from 'lucide-react';
+import { Sparkles, TrendingUp, HeartPulse, AlertTriangle, ArrowRight, Zap, Trophy, ShieldAlert, Smile } from 'lucide-react';
 
 export const HabitCorrelationCard: React.FC = () => {
   const habits = useHabitStore((s) => s.habits);
@@ -202,8 +202,17 @@ export const HabitCorrelationCard: React.FC = () => {
                       >
                         {w.habit_name}
                       </span>
-                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold">
-                        +{w.difference.toFixed(1)} {w.metric === 'energy' ? '⚡ Energy' : '😊 Mood'}
+                      <span className="px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold inline-flex items-center gap-1">
+                        +{w.difference.toFixed(1)}
+                        {w.metric === 'energy' ? (
+                          <>
+                            <Zap size={11} className="text-amber-400 inline" /> Energy
+                          </>
+                        ) : (
+                          <>
+                            <Smile size={11} className="text-pink-400 inline" /> Mood
+                          </>
+                        )}
                       </span>
                     </div>
 

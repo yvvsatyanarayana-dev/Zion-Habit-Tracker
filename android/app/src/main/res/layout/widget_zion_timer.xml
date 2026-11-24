@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_timer_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/widget_bg_obsidian"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="12dp">
+
+    <ImageView
+        android:id="@+id/widget_timer_icon"
+        android:layout_width="38dp"
+        android:layout_height="38dp"
+        android:background="@drawable/widget_pill_accent"
+        android:padding="8dp"
+        android:src="@drawable/widget_check_done" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="10dp"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/widget_timer_status"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="FOCUS PROTOCOL"
+            android:textColor="#818cf8"
+            android:textSize="9.5sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_timer_name"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:ellipsize="end"
+            android:maxLines="1"
+            android:text="Deep Work Session"
+            android:textColor="#ffffff"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_timer_clock"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="25:00"
+            android:textColor="#34d399"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <TextView
+            android:id="@+id/widget_timer_btn_toggle"
+            android:layout_width="60dp"
+            android:layout_height="28dp"
+            android:background="@drawable/widget_btn_bg"
+            android:gravity="center"
+            android:text="Launch"
+            android:textColor="#ffffff"
+            android:textSize="11sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/widget_timer_btn_open"
+            android:layout_width="60dp"
+            android:layout_height="28dp"
+            android:layout_marginTop="4dp"
+            android:background="@drawable/widget_btn_bg"
+            android:gravity="center"
+            android:text="Studio"
+            android:textColor="#a1a1aa"
+            android:textSize="11sp" />
+    </LinearLayout>
+</LinearLayout>

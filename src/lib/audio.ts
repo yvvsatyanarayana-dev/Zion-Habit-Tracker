@@ -4,9 +4,22 @@
 class SoundEngine {
   private ctx: AudioContext | null = null;
   private enabled: boolean = true;
+  private idleTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     // AudioContext will be initialized on first user interaction
+  }
+
+  private scheduleIdleSuspend() {
+    if (this.idleTimer) {
+      clearTimeout(this.idleTimer);
+    }
+    // Release the Windows Audio mixer thread after 8 seconds of silence to ensure 0.00% idle CPU
+    this.idleTimer = setTimeout(() => {
+      if (this.ctx && this.ctx.state === 'running') {
+        this.ctx.suspend().catch(() => {});
+      }
+    }, 8000);
   }
 
   private getContext(): AudioContext | null {
@@ -20,6 +33,7 @@ class SoundEngine {
     if (this.ctx && this.ctx.state === 'suspended') {
       this.ctx.resume().catch(() => {});
     }
+    this.scheduleIdleSuspend();
     return this.ctx;
   }
 
@@ -186,6 +200,30 @@ class SoundEngine {
       gain.connect(ctx.destination);
       osc.start(now);
       osc.stop(now + 0.32);
+    } catch {}
+  }
+
+  /**
+   * Focus Shield Interception Gong/Tone
+   */
+  public playShieldAlert() {
+    if (!this.enabled) return;
+    const ctx = this.getContext();
+    if (!ctx) return;
+    try {
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(523.25, now);
+      osc.frequency.exponentialRampToValueAtTime(392.0, now + 0.15);
+      gain.gain.setValueAtTime(0.001, now);
+      gain.gain.linearRampToValueAtTime(0.18, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.4);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.45);
     } catch {}
   }
 

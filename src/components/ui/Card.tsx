@@ -12,7 +12,7 @@ export const Card: React.FC<CardProps> = ({ children, className = '', onClick, i
     <div
       id={id}
       onClick={onClick}
-      className={`studio-card p-5 relative transition-all ${className}`}
+      className={`studio-card p-5 relative ${className}`}
     >
       {children}
     </div>

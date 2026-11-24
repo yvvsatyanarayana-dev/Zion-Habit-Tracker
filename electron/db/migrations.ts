@@ -142,6 +142,136 @@ const migrations: Migration[] = [
       `);
     },
   },
+  {
+    version: 4,
+    up: (db) => {
+      // Timetable schedules
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS timetable_schedules (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          description TEXT NOT NULL DEFAULT '',
+          days_of_week TEXT NOT NULL DEFAULT '[1,2,3,4,5,6]',
+          is_active INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+
+        CREATE TABLE IF NOT EXISTS timetable_blocks (
+          id TEXT PRIMARY KEY,
+          schedule_id TEXT NOT NULL,
+          title TEXT NOT NULL,
+          start_time TEXT NOT NULL,
+          end_time TEXT NOT NULL,
+          category TEXT NOT NULL DEFAULT 'general',
+          description TEXT NOT NULL DEFAULT '',
+          color TEXT NOT NULL DEFAULT '#6366f1',
+          emoji TEXT NOT NULL DEFAULT '⏱',
+          sound_enabled INTEGER NOT NULL DEFAULT 1,
+          habit_id TEXT,
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (schedule_id) REFERENCES timetable_schedules(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_timetable_blocks_schedule ON timetable_blocks(schedule_id);
+        CREATE INDEX IF NOT EXISTS idx_timetable_blocks_start ON timetable_blocks(start_time);
+
+        CREATE TABLE IF NOT EXISTS timetable_executions (
+          date TEXT NOT NULL,
+          block_id TEXT NOT NULL,
+          completed INTEGER NOT NULL DEFAULT 1,
+          completed_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          PRIMARY KEY (date, block_id),
+          FOREIGN KEY (block_id) REFERENCES timetable_blocks(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_timetable_exec_date ON timetable_executions(date);
+      `);
+    },
+  },
+  {
+    version: 5,
+    up: (db) => {
+      // Identity Proof Journaling
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS habit_proofs (
+          id TEXT PRIMARY KEY,
+          habit_id TEXT NOT NULL,
+          date TEXT NOT NULL,
+          image_data TEXT NOT NULL,
+          audio_data TEXT DEFAULT '',
+          caption TEXT NOT NULL DEFAULT '',
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (habit_id) REFERENCES habits(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_habit_proofs_habit_date ON habit_proofs(habit_id, date);
+      `);
+
+      // Habit Stacking & Synergy Connections
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS habit_stacks (
+          id TEXT PRIMARY KEY,
+          parent_habit_id TEXT NOT NULL,
+          child_habit_id TEXT NOT NULL,
+          cue_trigger TEXT NOT NULL DEFAULT 'immediate',
+          synergy_score REAL NOT NULL DEFAULT 1.0,
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (parent_habit_id) REFERENCES habits(id) ON DELETE CASCADE,
+          FOREIGN KEY (child_habit_id) REFERENCES habits(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_habit_stacks_parent ON habit_stacks(parent_habit_id);
+        CREATE INDEX IF NOT EXISTS idx_habit_stacks_child ON habit_stacks(child_habit_id);
+      `);
+
+      // P2P Duels & Accountability Contracts
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS p2p_duels (
+          id TEXT PRIMARY KEY,
+          room_code TEXT NOT NULL UNIQUE,
+          title TEXT NOT NULL,
+          habit_name TEXT NOT NULL,
+          target_days INTEGER NOT NULL DEFAULT 7,
+          stake_xp INTEGER NOT NULL DEFAULT 100,
+          my_progress INTEGER NOT NULL DEFAULT 0,
+          peer_name TEXT NOT NULL DEFAULT 'Peer',
+          peer_progress INTEGER NOT NULL DEFAULT 0,
+          status TEXT NOT NULL DEFAULT 'active',
+          created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_p2p_duels_room ON p2p_duels(room_code);
+      `);
+    },
+  },
+  {
+    version: 6,
+    up: (db) => {
+      // User-based Data Scoping
+      try {
+        db.exec(`
+          ALTER TABLE habits ADD COLUMN user_id TEXT NOT NULL DEFAULT '';
+          CREATE INDEX IF NOT EXISTS idx_habits_user ON habits(user_id);
+        `);
+      } catch {}
+      try {
+        db.exec(`
+          ALTER TABLE timetable_schedules ADD COLUMN user_id TEXT NOT NULL DEFAULT '';
+          CREATE INDEX IF NOT EXISTS idx_timetable_schedules_user ON timetable_schedules(user_id);
+        `);
+      } catch {}
+      try {
+        db.exec(`
+          ALTER TABLE wellness_logs ADD COLUMN user_id TEXT NOT NULL DEFAULT '';
+          CREATE INDEX IF NOT EXISTS idx_wellness_user ON wellness_logs(user_id);
+        `);
+      } catch {}
+      try {
+        db.exec(`
+          ALTER TABLE habit_proofs ADD COLUMN user_id TEXT NOT NULL DEFAULT '';
+          CREATE INDEX IF NOT EXISTS idx_habit_proofs_user ON habit_proofs(user_id);
+        `);
+      } catch {}
+    },
+  },
 ];
 
 export function runMigrations(db: Database.Database): void {

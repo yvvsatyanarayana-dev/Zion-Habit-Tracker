@@ -54,6 +54,7 @@ export const HabitsGrid: React.FC = () => {
   const selectedMonth = useHabitStore((s) => s.selectedMonth);
   const weekStartDay = useHabitStore((s) => s.settings.week_start_day);
   const allowFutureEdits = useHabitStore((s) => s.settings.allow_future_edits);
+  const allowPastEdits = useHabitStore((s) => s.settings.allow_past_edits);
   const density = useHabitStore((s) => s.settings.density);
   const currentDate = useHabitStore((s) => s.currentDate);
   const searchQuery = useHabitStore((s) => s.searchQuery);
@@ -105,7 +106,7 @@ export const HabitsGrid: React.FC = () => {
 
       if (container && todayCol) {
         const stickyWidth =
-          container.querySelector<HTMLElement>('.habits-grid-habit-column')?.offsetWidth ?? 280;
+          container.querySelector<HTMLElement>('.habits-grid-habit-column')?.offsetWidth ?? 350;
         const colRect = todayCol.getBoundingClientRect();
         const containerRect = container.getBoundingClientRect();
         const currentScrollLeft = container.scrollLeft;
@@ -175,6 +176,13 @@ export const HabitsGrid: React.FC = () => {
     return list;
   }, [habits, selectedCategory, searchQuery, filterMode, todayWday, todayStr, checkins]);
 
+  // Precompute scheduled habits by weekday (0-6) for fast O(1) day lookups
+  const scheduledByWeekday = useMemo(() => {
+    return Array.from({ length: 7 }, (_, wday) =>
+      activeHabits.filter((h) => isHabitScheduledOnDay(h, wday))
+    );
+  }, [activeHabits]);
+
   // Days displayed in current view
   const activeDays: MonthDayInfo[] = useMemo(() => {
     if (viewMode === 'week') {
@@ -216,7 +224,9 @@ export const HabitsGrid: React.FC = () => {
         const currentHabit = activeHabits[habitIdx];
         const currentDay = activeDays[dayIdx];
         if (currentHabit && currentDay) {
-          if (!currentDay.isFuture || allowFutureEdits) {
+          const isPastDisabled = currentDay.isPast && !allowPastEdits;
+          const isFutureDisabled = currentDay.isFuture && !allowFutureEdits;
+          if (!isPastDisabled && !isFutureDisabled) {
             toggleCheckin(currentHabit.id, currentDay.dateStr);
           }
         }
@@ -225,7 +235,7 @@ export const HabitsGrid: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [activeCell, activeHabits, activeDays, allowFutureEdits, toggleCheckin]);
+  }, [activeCell, activeHabits, activeDays, allowFutureEdits, allowPastEdits, toggleCheckin]);
 
   // Drag and drop reordering
   const handleDragStart = (idx: number) => setDraggedHabitIdx(idx);
@@ -503,7 +513,7 @@ export const HabitsGrid: React.FC = () => {
                     backgroundColor: 'var(--bg-surface-elevated)',
                     boxShadow: 'var(--sticky-col-shadow, 4px 0 16px -2px rgba(0, 0, 0, 0.45))',
                   }}
-                  className="habits-grid-habit-column sticky left-0 z-40 px-3.5 py-2 w-[280px] min-w-[280px] max-w-[280px] border-r border-[var(--border-subtle)]"
+                  className="habits-grid-habit-column sticky left-0 z-40 px-3.5 py-2 w-[350px] min-w-[350px] max-w-[350px] border-r border-[var(--border-subtle)]"
                 >
                   <span className="text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider">
                     HABIT OVERVIEW
@@ -563,7 +573,7 @@ export const HabitsGrid: React.FC = () => {
                   backgroundColor: 'var(--bg-surface-elevated)',
                   boxShadow: 'var(--sticky-col-shadow, 4px 0 16px -2px rgba(0, 0, 0, 0.45))',
                 }}
-                className="habits-grid-habit-column sticky left-0 z-40 px-3.5 py-1.5 w-[280px] min-w-[280px] max-w-[280px] border-r border-[var(--border-subtle)]"
+                className="habits-grid-habit-column sticky left-0 z-40 px-3.5 py-1.5 w-[350px] min-w-[350px] max-w-[350px] border-r border-[var(--border-subtle)]"
               >
                 <div className="flex items-center justify-between">
                   <span className="text-[11px] font-bold text-[var(--text-primary)]">
@@ -671,13 +681,8 @@ export const HabitsGrid: React.FC = () => {
               const progress = habitStatsMap.get(habit.id);
               const streak = progress?.currentStreak || 0;
 
-              // Full month counts
-              let completedInMonth = 0;
-              allMonthDays.forEach((d) => {
-                if (checkins[`${habit.id}_${d.dateStr}`]?.completed) {
-                  completedInMonth++;
-                }
-              });
+              // Full month counts from memoized progress stats
+              const completedInMonth = progress ? progress.completedDays : 0;
 
               const goal = habit.monthly_goal > 0 ? habit.monthly_goal : allMonthDays.length;
               const leftInMonth = Math.max(0, goal - completedInMonth);
@@ -701,7 +706,7 @@ export const HabitsGrid: React.FC = () => {
                       backgroundColor: 'var(--bg-surface)',
                       boxShadow: 'var(--sticky-col-shadow, 4px 0 16px -2px rgba(0, 0, 0, 0.45))',
                     }}
-                    className={`habits-grid-habit-column sticky left-0 z-20 group-hover:bg-[var(--bg-surface-hover)] px-3.5 ${rowPaddingClass} w-[280px] min-w-[280px] max-w-[280px] border-r border-[var(--border-subtle)]`}
+                    className={`habits-grid-habit-column sticky left-0 z-20 group-hover:bg-[var(--bg-surface-hover)] px-3.5 ${rowPaddingClass} w-[350px] min-w-[350px] max-w-[350px] border-r border-[var(--border-subtle)]`}
                   >
                     <div className="flex items-center gap-2.5">
                       <button
@@ -725,18 +730,66 @@ export const HabitsGrid: React.FC = () => {
 
                       {/* Habit Name, Streak, Target & Cadence */}
                       <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-1">
-                          <div className="flex items-center gap-1.5 min-w-0">
-                            <span
-                              onClick={() => openHabitModal(habit)}
-                              style={{ color: 'var(--text-primary)' }}
-                              className="font-bold text-[13px] truncate cursor-pointer hover:underline hover:text-[var(--accent-primary)] transition-colors"
-                              title={`Click to edit "${habit.name}"`}
-                            >
-                              {habit.name}
-                            </span>
+                        {/* Row 1: Habit Name (Full Width, Zero Clipping) & Hover Actions */}
+                        <div className="flex items-center justify-between gap-2">
+                          <span
+                            onClick={() => openHabitModal(habit)}
+                            style={{ color: 'var(--text-primary)' }}
+                            className="font-bold text-[13.5px] truncate cursor-pointer hover:underline hover:text-[var(--accent-primary)] transition-colors leading-tight"
+                            title={`Click to edit "${habit.name}"`}
+                          >
+                            {habit.name}
+                          </span>
 
-                            {/* Real-Time Habit Focus Timer Button */}
+                          {/* Quick edit & delete icons on hover */}
+                          <div className="opacity-0 group-hover:opacity-100 flex items-center gap-1 transition-opacity shrink-0">
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                openHabitModal(habit);
+                              }}
+                              style={{ color: 'var(--text-muted)' }}
+                              className="w-5 h-5 rounded-[4px] flex items-center justify-center hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] cursor-pointer transition-colors"
+                              title="Edit habit"
+                            >
+                              <Edit2 size={11} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setHabitToDelete(habit);
+                              }}
+                              style={{ color: 'var(--text-muted)' }}
+                              className="w-5 h-5 rounded-[4px] flex items-center justify-center hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer transition-colors"
+                              title="Delete habit"
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Row 2: Badges, Timer, Cadence & Target Stepper */}
+                        <div className="flex items-center justify-between gap-1.5 mt-1 text-[10px]">
+                          <div className="flex items-center gap-1.5 min-w-0 overflow-hidden">
+                            {/* Streak Badge */}
+                            {streak > 0 ? (
+                              <span
+                                style={{
+                                  color: '#f59e0b',
+                                  backgroundColor: 'rgba(245, 158, 11, 0.14)',
+                                  borderColor: 'rgba(245, 158, 11, 0.3)',
+                                }}
+                                className="px-1.5 py-0.2 rounded-[4px] border font-bold flex items-center gap-0.5 font-num shrink-0"
+                                title={`${streak} day current streak!`}
+                              >
+                                <Flame size={10} className="fill-amber-500 text-amber-500" />
+                                <span>{streak}d</span>
+                              </span>
+                            ) : null}
+
+                            {/* Focus Timer Button */}
                             {(() => {
                               const isTimerActive = activeHabitTimer?.habitId === habit.id;
                               const goalMins = habit.daily_focus_minutes;
@@ -761,7 +814,7 @@ export const HabitsGrid: React.FC = () => {
                                     borderColor: isTimerActive ? habit.color : 'var(--border-subtle)',
                                     color: isTimerActive ? habit.color : 'var(--text-secondary)',
                                   }}
-                                  className={`h-5 px-1.5 rounded-[4px] border text-[10px] font-bold flex items-center gap-1 shrink-0 hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] transition-colors cursor-pointer ${
+                                  className={`h-4.5 px-1.5 rounded-[4px] border text-[9.5px] font-bold flex items-center gap-1 shrink-0 hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] transition-colors cursor-pointer ${
                                     isTimerActive ? 'animate-pulse' : ''
                                   }`}
                                   title={
@@ -770,48 +823,37 @@ export const HabitsGrid: React.FC = () => {
                                       : `Start ${goalLabel || '25m'} real-time timer for "${habit.name}"`
                                   }
                                 >
-                                  {isTimerActive ? <Timer size={10} /> : <Play size={9} fill="currentColor" />}
+                                  {isTimerActive ? <Timer size={9} /> : <Play size={8} fill="currentColor" />}
                                   <span>{isTimerActive ? 'LIVE' : goalLabel || 'Timer'}</span>
                                 </button>
                               );
                             })()}
 
-                            {/* Quick edit & delete icons on hover */}
-                            <div className="hidden group-hover:flex items-center gap-0.5">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openHabitModal(habit);
-                                }}
-                                style={{ color: 'var(--text-muted)' }}
-                                className="w-5 h-5 rounded-[3px] flex items-center justify-center hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] cursor-pointer"
-                                title="Edit habit"
-                              >
-                                <Edit2 size={11} />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setHabitToDelete(habit);
-                                }}
-                                style={{ color: 'var(--text-muted)' }}
-                                className="w-5 h-5 rounded-[3px] flex items-center justify-center hover:text-rose-400 hover:bg-rose-500/10 cursor-pointer"
-                                title="Delete habit"
-                              >
-                                <Trash2 size={11} />
-                              </button>
-                            </div>
+                            {/* Cadence */}
+                            <span style={{ color: 'var(--text-muted)' }} className="text-[10px] font-medium shrink-0">
+                              {!habit.schedule_days || habit.schedule_days.length === 7
+                                ? 'Daily'
+                                : `${habit.schedule_days.length}d/wk`}
+                            </span>
+
+                            <span style={{ color: 'var(--text-dim)' }} className="shrink-0">•</span>
+
+                            {/* Month Progress */}
+                            <span
+                              style={{ color: habit.color }}
+                              className="text-[10px] font-bold font-num truncate"
+                            >
+                              {completedInMonth}/{goal} ({pct}%)
+                            </span>
                           </div>
 
-                          {/* Custom Studio Themed Stepper (No default browser white spinner!) */}
+                          {/* Stepper on the right of Row 2 */}
                           <div
                             style={{
                               backgroundColor: 'var(--bg-surface-elevated)',
                               borderColor: 'var(--border-subtle)',
                             }}
-                            className="habits-grid-target flex items-center rounded-[5px] border p-0.5 flex-shrink-0 select-none group/stepper hover:border-[var(--border-medium)] transition-colors"
+                            className="habits-grid-target flex items-center rounded-[5px] border p-0.5 shrink-0 select-none group/stepper hover:border-[var(--border-medium)] transition-colors ml-auto"
                           >
                             <button
                               type="button"
@@ -822,12 +864,12 @@ export const HabitsGrid: React.FC = () => {
                                   monthly_goal: Math.max(1, habit.monthly_goal - 1),
                                 });
                               }}
-                              className="w-4.5 h-4.5 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-[3px] transition-colors cursor-pointer"
+                              className="w-4 h-4 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-[3px] transition-colors cursor-pointer"
                               title="Decrease target by 1 day"
                             >
-                              <Minus size={9} strokeWidth={2.4} />
+                              <Minus size={8} strokeWidth={2.4} />
                             </button>
-                            <span className="px-1 text-center font-num text-[11px] font-bold text-[var(--text-primary)] min-w-[22px]">
+                            <span className="px-1 text-center font-num text-[10px] font-bold text-[var(--text-primary)] min-w-[20px]">
                               {habit.monthly_goal}d
                             </span>
                             <button
@@ -839,57 +881,12 @@ export const HabitsGrid: React.FC = () => {
                                   monthly_goal: Math.min(31, habit.monthly_goal + 1),
                                 });
                               }}
-                              className="w-4.5 h-4.5 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-[3px] transition-colors cursor-pointer"
+                              className="w-4 h-4 flex items-center justify-center text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--bg-surface-hover)] rounded-[3px] transition-colors cursor-pointer"
                               title="Increase target by 1 day"
                             >
-                              <Plus size={9} strokeWidth={2.4} />
+                              <Plus size={8} strokeWidth={2.4} />
                             </button>
                           </div>
-                        </div>
-
-                        {/* Badges Row */}
-                        <div className="habits-grid-badges flex items-center gap-1.5 mt-1 text-[10px]">
-                          {streak > 0 ? (
-                            <span
-                              style={{
-                                color: '#f59e0b',
-                                backgroundColor: 'rgba(245, 158, 11, 0.14)',
-                                borderColor: 'rgba(245, 158, 11, 0.3)',
-                              }}
-                              className="px-1.5 py-0.2 rounded-[4px] border font-bold flex items-center gap-0.5 font-num"
-                              title={`${streak} day current streak!`}
-                            >
-                              <Flame size={10} className="fill-amber-500 text-amber-500" />
-                              <span>{streak}d</span>
-                            </span>
-                          ) : (
-                            <span
-                              style={{ color: 'var(--text-dim)' }}
-                              className="font-mono text-[9.5px]"
-                            >
-                              0d streak
-                            </span>
-                          )}
-
-                          <span style={{ color: 'var(--text-dim)' }}>•</span>
-
-                          <span
-                            style={{ color: 'var(--text-muted)' }}
-                            className="text-[10px] font-medium"
-                          >
-                            {!habit.schedule_days || habit.schedule_days.length === 7
-                              ? 'Daily'
-                              : `${habit.schedule_days.length}d/wk`}
-                          </span>
-
-                          <span style={{ color: 'var(--text-dim)' }}>•</span>
-
-                          <span
-                            style={{ color: habit.color }}
-                            className="text-[10px] font-bold font-num"
-                          >
-                            {completedInMonth}/{goal} ({pct}%)
-                          </span>
                         </div>
                       </div>
                     </div>
@@ -900,11 +897,21 @@ export const HabitsGrid: React.FC = () => {
                     const key = `${habit.id}_${day.dateStr}`;
                     const isChecked = Boolean(checkins[key]?.completed);
                     const isScheduled = isHabitScheduledOnDay(habit, day.weekday);
-                    const isDisabled = (day.isFuture && !allowFutureEdits) || !isScheduled;
+                    const isPastDisabled = day.isPast && !allowPastEdits;
+                    const isFutureDisabled = day.isFuture && !allowFutureEdits;
+                    const isDisabled = isPastDisabled || isFutureDisabled || !isScheduled;
                     const isFirstInWeek = day.isFirstDayOfWeek && viewMode === 'month';
                     const isToday = day.isToday;
                     const isCellFocused =
                       activeCell?.habitIdx === hIdx && activeCell?.dayIdx === dIdx;
+
+                    const lockTitle = !isScheduled
+                      ? 'Not scheduled on this day'
+                      : isPastDisabled
+                      ? "Past date - editing locked (can only mark today's task)"
+                      : isFutureDisabled
+                      ? 'Future date locked'
+                      : undefined;
 
                     return (
                       <td
@@ -930,6 +937,7 @@ export const HabitsGrid: React.FC = () => {
                               isToday={isToday}
                               onClick={() => toggleCheckin(habit.id, day.dateStr)}
                               ariaLabel={`${habit.name}, ${day.dateStr}`}
+                              title={lockTitle}
                             />
                           </div>
                         ) : (
@@ -1042,10 +1050,15 @@ export const HabitsGrid: React.FC = () => {
                   colSpan={activeDays.length + 5}
                   className="py-10 text-center text-xs text-[var(--text-muted)]"
                 >
-                  <p className="font-semibold text-sm text-[var(--text-primary)]">
-                    {filterMode === 'pending'
-                      ? '🎉 All habits completed for today! Awesome work!'
-                      : 'No habits found.'}
+                  <p className="font-semibold text-sm text-[var(--text-primary)] flex items-center justify-center gap-1.5">
+                    {filterMode === 'pending' ? (
+                      <>
+                        <Sparkles size={16} className="text-amber-400" />
+                        <span>All habits completed for today! Awesome work!</span>
+                      </>
+                    ) : (
+                      'No habits found.'
+                    )}
                   </p>
                   <p className="text-[11px] text-[var(--text-secondary)] mt-1">
                     {filterMode !== 'all' ? (
@@ -1079,7 +1092,7 @@ export const HabitsGrid: React.FC = () => {
                   backgroundColor: 'var(--bg-surface-elevated)',
                   boxShadow: '4px 0 16px -2px rgba(0, 0, 0, 0.45)',
                 }}
-                className="habits-grid-habit-column sticky left-0 z-40 px-3.5 py-1.5 w-[280px] min-w-[280px] max-w-[280px] border-r border-[var(--border-subtle)]"
+                className="habits-grid-habit-column sticky left-0 z-40 px-3.5 py-1.5 w-[350px] min-w-[350px] max-w-[350px] border-r border-[var(--border-subtle)]"
               >
                 <div className="flex items-center gap-1.5">
                   <Sparkles size={12} className="text-amber-400" />
@@ -1097,9 +1110,7 @@ export const HabitsGrid: React.FC = () => {
                 const isFirstInWeek = day.isFirstDayOfWeek && viewMode === 'month';
                 const isToday = day.isToday;
 
-                const scheduledHabits = habits
-                  .filter((h) => !h.archived)
-                  .filter((h) => isHabitScheduledOnDay(h, day.weekday));
+                const scheduledHabits = scheduledByWeekday[day.weekday];
                 const scheduledCount = scheduledHabits.length;
 
                 let completedCount = 0;
@@ -1169,43 +1180,34 @@ export const HabitsGrid: React.FC = () => {
         </table>
       </div>
 
-      {/* ── INLINE BOTTOM ACTION BAR: + ADD HABIT & QUICK PRESET CHIPS ── */}
-      <div className="habits-grid-add-bar flex-shrink-0 px-3 py-1.5 border-t border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] flex flex-wrap items-center justify-between gap-2">
+      {/* ── INLINE BOTTOM ACTION BAR: + ADD HABIT & QUICK TEMPLATE CHIPS ── */}
+      <div className="habits-grid-add-bar flex-shrink-0 px-3.5 py-2 border-t border-[var(--border-subtle)] bg-[var(--bg-surface-elevated)] flex flex-wrap items-center justify-between gap-2.5">
         <div className="habits-grid-add-action-wrap flex items-center gap-2">
           <button
             type="button"
             onClick={() => openHabitModal()}
-            className="habits-grid-add-button h-7 px-3 rounded-[5px] text-xs font-semibold bg-white text-zinc-950 hover:opacity-90 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
+            className="habits-grid-add-button h-7.5 px-3 rounded-lg text-xs font-bold bg-white text-zinc-950 hover:bg-zinc-200 active:scale-[0.98] transition-all cursor-pointer flex items-center gap-1.5 shadow-sm"
           >
             <Plus size={13} strokeWidth={2.4} />
-            <span>Add New Habit</span>
+            <span>Add Habit</span>
           </button>
 
-          <span className="text-[11px] text-[var(--text-dim)] hidden sm:inline">
-            or instant add:
+          <span className="text-[11px] text-[var(--text-dim)] font-medium hidden sm:inline">
+            or instant template:
           </span>
         </div>
 
-        {/* 1-Click Quick Preset Chips */}
+        {/* 1-Click Quick Preset Template Chips */}
         <div className="habits-grid-presets flex items-center gap-1.5 overflow-x-auto scrollbar-none">
-          <button
-            type="button"
-            onClick={() => openHabitModal()}
-            className="habits-grid-preset habits-grid-preset--custom h-6.5 px-2.5 rounded-[5px] border border-white/10 bg-white/10 text-white text-[11px] font-semibold hover:bg-white/15 transition-colors cursor-pointer flex items-center gap-1 whitespace-nowrap flex-shrink-0"
-            title="Create Custom Habit"
-          >
-            <Plus size={11} strokeWidth={2.4} />
-            <span>New Habit</span>
-          </button>
           {QUICK_PRESETS.map((preset) => (
             <button
               key={preset.name}
               type="button"
               onClick={() => handleAddPresetHabit(preset)}
-              className="habits-grid-preset h-6.5 px-2.5 rounded-[5px] border border-white/5 bg-zinc-900/60 text-zinc-400 text-[11px] font-medium hover:text-zinc-200 hover:border-white/15 transition-colors cursor-pointer flex items-center gap-1 whitespace-nowrap flex-shrink-0"
-              title={`⚡ 1-Click add "${preset.name}"`}
+              className="habits-grid-preset h-7 px-2.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--bg-surface)] text-zinc-400 text-xs font-medium hover:text-zinc-200 hover:border-[var(--border-medium)] transition-colors cursor-pointer flex items-center gap-1.5 whitespace-nowrap flex-shrink-0"
+              title={`Add "${preset.name}"`}
             >
-              <Plus size={10} style={{ color: preset.color }} />
+              <Plus size={11} style={{ color: preset.color }} />
               <span>{preset.name}</span>
             </button>
           ))}

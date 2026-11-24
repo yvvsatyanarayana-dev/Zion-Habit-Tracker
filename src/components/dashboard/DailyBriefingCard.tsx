@@ -13,15 +13,17 @@ import { formatLocalDate } from '../../lib/dateUtils';
 import { isHabitScheduledOnDay, computeStreakStats } from '../../lib/statsUtils';
 import { computeSmartInsights } from '../../lib/correlationUtils';
 import { computeMasteryInfo } from '../../lib/masteryUtils';
+import { useLiveClock } from '../../hooks/useLiveClock';
+import { sound } from '../../lib/audio';
 
-export const DailyBriefingCard: React.FC = () => {
+export const DailyBriefingCard: React.FC = React.memo(() => {
   const currentUser = useHabitStore((s) => s.currentUser);
-  const habits = useHabitStore((s) => s.habits || []);
-  const checkins = useHabitStore((s) => s.checkins || {});
-  const allCheckinsList = useHabitStore((s) => s.allCheckinsList || []);
-  const wellnessLogs = useHabitStore((s) => s.wellnessLogs || {});
-  const focusSessions = useHabitStore((s) => s.focusSessions || []);
-  const currentDate = useHabitStore((s) => s.currentDate || new Date());
+  const habits = useHabitStore((s) => s.habits);
+  const checkins = useHabitStore((s) => s.checkins);
+  const allCheckinsList = useHabitStore((s) => s.allCheckinsList);
+  const wellnessLogs = useHabitStore((s) => s.wellnessLogs);
+  const focusSessions = useHabitStore((s) => s.focusSessions);
+  const currentDate = useHabitStore((s) => s.currentDate);
   const streakThreshold = useHabitStore((s) => s.settings?.streak_threshold ?? 50);
 
   const setFocusStudioOpen = useHabitStore((s) => s.setFocusStudioOpen);
@@ -79,7 +81,8 @@ export const DailyBriefingCard: React.FC = () => {
     );
   }, [activeHabits, allCheckinsList, wellnessLogs, todayWday, scheduledToday, checkins, todayStr]);
 
-  const hour = new Date().getHours();
+  const { clockDate } = useLiveClock();
+  const hour = clockDate.getHours();
   const greeting =
     hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
   const firstName = currentUser?.name
@@ -94,11 +97,11 @@ export const DailyBriefingCard: React.FC = () => {
         backgroundColor: 'var(--bg-surface)',
         borderColor: 'var(--border-subtle)',
       }}
-      className="rounded-2xl border p-4 sm:p-5 relative overflow-hidden"
+      className="rounded-2xl border p-4 sm:p-5 relative z-20 overflow-visible"
     >
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         {/* Left: Greeting + Live Coaching Insight */}
-        <div className="space-y-1.5">
+        <div className="space-y-1.5 flex-1 min-w-0 pr-2">
           <div className="flex flex-wrap items-center gap-2">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-indigo-500/15 text-indigo-400 border border-indigo-500/25">
               <Sparkles size={11} />
@@ -124,7 +127,7 @@ export const DailyBriefingCard: React.FC = () => {
             )}
           </div>
 
-          <h2 className="text-base sm:text-lg font-bold tracking-tight" style={{ color: 'var(--text-primary)' }}>
+          <h2 className="text-base sm:text-lg font-bold tracking-tight text-[var(--text-primary)]">
             {greeting}, {firstName}.{' '}
             {scheduledToday.length === 0 ? (
               <span style={{ color: 'var(--text-secondary)' }} className="font-normal">
@@ -155,9 +158,12 @@ export const DailyBriefingCard: React.FC = () => {
         </div>
 
         {/* Right: Studio Quick Actions */}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-2.5 shrink-0">
           <button
-            onClick={() => setFocusStudioOpen(true)}
+            onClick={() => {
+              sound.playClick();
+              setFocusStudioOpen(true);
+            }}
             style={{ backgroundColor: 'var(--accent-primary)' }}
             className="px-3.5 py-2 rounded-xl text-white text-xs font-bold flex items-center gap-1.5 shadow hover:opacity-90 active:scale-95 transition-all cursor-pointer"
           >
@@ -166,26 +172,35 @@ export const DailyBriefingCard: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setWellnessModalOpen(true)}
+            onClick={() => {
+              sound.playClick();
+              setWellnessModalOpen(true);
+            }}
             style={{
               backgroundColor: hasTodayWellness ? 'var(--bg-surface-elevated)' : 'rgba(236, 72, 153, 0.12)',
               borderColor: hasTodayWellness ? 'var(--border-subtle)' : 'rgba(236, 72, 153, 0.35)',
               color: hasTodayWellness ? 'var(--text-secondary)' : '#f472b6',
             }}
             className="px-3 py-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 hover:opacity-90 active:scale-95 transition-all cursor-pointer"
+            title={hasTodayWellness ? "Edit Today's Wellness Log" : "Log Today's Energy & Mood"}
           >
             <Heart size={14} />
             <span>{hasTodayWellness ? 'Wellness Logged' : 'Log Wellness'}</span>
           </button>
 
+          {/* Share Card Button */}
           <button
-            onClick={() => setShareCardOpen(true)}
+            onClick={() => {
+              sound.playClick();
+              setShareCardOpen(true);
+            }}
             style={{
               backgroundColor: 'var(--bg-surface-elevated)',
               borderColor: 'var(--border-subtle)',
               color: 'var(--text-secondary)',
             }}
-            className="px-3 py-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 hover:text-[var(--text-primary)] active:scale-95 transition-all cursor-pointer"
+            className="px-3.5 py-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 hover:text-[var(--text-primary)] hover:border-[var(--border-medium)] active:scale-95 transition-all cursor-pointer shadow-sm"
+            title="Export High-Resolution Achievement Card"
           >
             <Share2 size={14} />
             <span>Share Card</span>
@@ -194,4 +209,5 @@ export const DailyBriefingCard: React.FC = () => {
       </div>
     </div>
   );
-};
+});
+DailyBriefingCard.displayName = 'DailyBriefingCard';

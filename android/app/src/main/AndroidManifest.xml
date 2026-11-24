@@ -33,6 +33,35 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
+
+        <!-- Zion Habits & Momentum Home Screen Widget -->
+        <receiver
+            android:name=".ZionHabitWidgetProvider"
+            android:label="@string/widget_habits_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.satyanarayana.zion.ACTION_TOGGLE_HABIT" />
+                <action android:name="com.satyanarayana.zion.ACTION_REFRESH_WIDGET" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_zion_habits_info" />
+        </receiver>
+
+        <!-- Zion Focus Timer HUD Home Screen Widget -->
+        <receiver
+            android:name=".ZionTimerWidgetProvider"
+            android:label="@string/widget_timer_name"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="com.satyanarayana.zion.ACTION_TIMER_PLAY_PAUSE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_zion_timer_info" />
+        </receiver>
     </application>
 
     <!-- Permissions -->

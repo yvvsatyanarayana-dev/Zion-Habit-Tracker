@@ -71,7 +71,7 @@ export const ActivityRings: React.FC<ActivityRingProps> = ({
             strokeDashoffset={offsetOuter}
             strokeLinecap="round"
             fill="none"
-            className="transition-all duration-500 ease-out"
+            style={{ transition: 'stroke-dashoffset 0.5s ease-out' }}
           />
         )}
 
@@ -95,7 +95,7 @@ export const ActivityRings: React.FC<ActivityRingProps> = ({
             strokeDashoffset={offsetMiddle}
             strokeLinecap="round"
             fill="none"
-            className="transition-all duration-500 ease-out"
+            style={{ transition: 'stroke-dashoffset 0.5s ease-out' }}
           />
         )}
 
@@ -119,7 +119,7 @@ export const ActivityRings: React.FC<ActivityRingProps> = ({
             strokeDashoffset={offsetInner}
             strokeLinecap="round"
             fill="none"
-            className="transition-all duration-500 ease-out"
+            style={{ transition: 'stroke-dashoffset 0.5s ease-out' }}
           />
         )}
       </svg>
@@ -167,7 +167,7 @@ export const MiniRing: React.FC<{
             strokeDashoffset={offset}
             strokeLinecap="round"
             fill="none"
-            className="transition-all duration-300 ease-out"
+            style={{ transition: 'stroke-dashoffset 0.35s ease-out' }}
           />
         )}
       </svg>

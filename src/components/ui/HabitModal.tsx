@@ -312,7 +312,7 @@ export const HabitModal: React.FC = () => {
                         type="button"
                         onClick={() => handleQuickAddPreset(preset)}
                         className="h-7 px-1.5 border-l border-[var(--border-subtle)] text-[var(--text-muted)] hover:text-white hover:bg-[var(--accent-primary)] transition-colors cursor-pointer"
-                        title={`⚡ 1-Click Instant Add "${preset.name}"`}
+                        title={`1-Click Instant Add "${preset.name}"`}
                       >
                         <Plus size={11} strokeWidth={2.5} />
                       </button>

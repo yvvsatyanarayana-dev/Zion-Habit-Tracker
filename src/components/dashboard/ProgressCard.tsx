@@ -4,19 +4,23 @@ import { ActivityRings } from '../ui/ActivityRing';
 import { computeActivityRings } from '../../lib/statsUtils';
 import { useHabitStore } from '../../store/useHabitStore';
 
-export const ProgressCard: React.FC = () => {
+export const ProgressCard: React.FC = React.memo(() => {
   const habits = useHabitStore((s) => s.habits);
   const checkins = useHabitStore((s) => s.checkins);
   const selectedYear = useHabitStore((s) => s.selectedYear);
   const selectedMonth = useHabitStore((s) => s.selectedMonth);
   const currentDate = useHabitStore((s) => s.currentDate);
 
-  const stats = computeActivityRings(
-    habits,
-    checkins,
-    selectedYear,
-    selectedMonth,
-    currentDate
+  const stats = React.useMemo(
+    () =>
+      computeActivityRings(
+        habits,
+        checkins,
+        selectedYear,
+        selectedMonth,
+        currentDate
+      ),
+    [habits, checkins, selectedYear, selectedMonth, currentDate]
   );
 
   const todayPct = Math.round(stats.today.rate * 100);
@@ -127,4 +131,5 @@ export const ProgressCard: React.FC = () => {
       </div>
     </Card>
   );
-};
+});
+ProgressCard.displayName = 'ProgressCard';

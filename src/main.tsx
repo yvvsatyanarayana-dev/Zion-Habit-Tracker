@@ -17,6 +17,14 @@ window.addEventListener('unhandledrejection', (event) => {
 const isTimerWidget =
   typeof window !== 'undefined' && window.location.search.includes('widget=timer');
 
+if (isTimerWidget && typeof document !== 'undefined') {
+  document.documentElement.classList.add('timer-widget-mode');
+  document.documentElement.style.background = 'transparent';
+  document.documentElement.style.backgroundColor = 'transparent';
+  document.body.style.background = 'transparent';
+  document.body.style.backgroundColor = 'transparent';
+}
+
 ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
   <React.StrictMode>
     <ErrorBoundary fallbackTitle="Zion App Startup Error">
